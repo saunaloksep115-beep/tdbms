@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TDBMS Teachers Database</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#26282c">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script src="config.js"></script>
+
+<style>
+/* Layout idea: a registry ledger. Charcoal rail + paper work area, one red seal accent for the action that matters. */
+:root{
+  --paper:#f6f5f1; --card:#ffffff; --ink:#1d1f22; --muted:#666a70; --line:#dcd9d1; --rail:#26282c; --rail-ink:#eceae4;
+  --accent:#b3261e; --accent-ink:#ffffff; --soft:#ecebe5;
+  --good:#1f7a4d; --warn:#9a6b00; --bad:#b3261e;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --paper:#17181a; --card:#202225; --ink:#ecebe6; --muted:#a0a3a8; --line:#34373c; --rail:#101113; --rail-ink:#e4e2dc;
+  --accent:#e2574c; --accent-ink:#17181a; --soft:#2a2c30; --good:#55c08a; --warn:#e0b040; --bad:#f0766c;}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --paper:#17181a; --card:#202225; --ink:#ecebe6; --muted:#a0a3a8; --line:#34373c; --rail:#101113; --rail-ink:#e4e2dc;
+  --accent:#e2574c; --accent-ink:#17181a; --soft:#2a2c30; --good:#55c08a; --warn:#e0b040; --bad:#f0766c;}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.45 var(--body);-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#app{display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:100%}
+.top{grid-column:1/-1;background:var(--rail);color:var(--rail-ink);display:flex;align-items:center;gap:10px;padding:8px 16px;min-height:52px}
+.brand{display:flex;flex-direction:column;min-width:0;flex:1}
+.brand b{font:700 30px/1.05 var(--display);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{font-size:14px;opacity:.8;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid #ffffff40;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.pill i{width:8px;height:8px;border-radius:50%;background:#9a9a9a}
+.pill.live i{background:#4fd08c}.pill.saving i{background:#f0c040}.pill.off i{background:#f0766c}
+.tbtn{background:transparent;border:1px solid #ffffff55;color:inherit;border-radius:6px;padding:6px 11px;cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap}
+.tbtn:disabled{opacity:.35;cursor:default}
+.tbtn:not(:disabled):hover{background:#ffffff1c}
+.side{background:var(--rail);color:var(--rail-ink);padding:8px 8px 16px;overflow:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid #ffffff1a}
+.side a,.tabbar a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:12px;padding:10px 10px;border-radius:6px;font-weight:600;font-size:16px;cursor:pointer}
+.side a .ic{width:22px;height:22px}
+.side a:hover{background:#ffffff14}
+.side a.on{background:var(--paper);color:var(--ink)}
+.side .sep{font:600 11px var(--display);letter-spacing:.14em;text-transform:uppercase;opacity:.55;padding:14px 10px 4px}
+.badge{margin-left:auto;font-size:11px;background:#ffffff26;border-radius:99px;padding:0 7px}
+.side a.on .badge{background:var(--soft)}
+main{overflow:auto;padding:0 20px 80px;min-width:0}
+.head{position:sticky;top:0;z-index:6;background:var(--paper);padding-top:16px;padding-bottom:10px;margin-bottom:6px!important;border-bottom:1px solid var(--line)}
+.tw{max-height:calc(100vh - 250px);min-height:180px}
+.ic{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+h1 .ic{width:32px;height:32px}h2 .ic{width:22px;height:22px}
+.fld span{display:flex;align-items:center;gap:6px;font-size:13px}
+.tab{display:inline-flex;align-items:center;gap:6px}
+#logo{height:68px;max-width:220px;object-fit:contain;background:#fff;border-radius:8px;padding:4px;flex:none}
+#logo[hidden]{display:none}
+#scrollbtns{position:fixed;right:18px;bottom:22px;display:flex;flex-direction:column;gap:8px;z-index:30}
+#scrollbtns button{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:#0078d4;box-shadow:0 4px 14px #0003;cursor:pointer;display:grid;place-items:center}
+#scrollbtns button:hover{border-color:#0078d4}#scrollbtns .ic{width:24px;height:24px}
+body.out #scrollbtns{display:none}
+.owner{font-size:14px;line-height:1.6}.owner b{font-size:15px}
+.ownerfoot{margin-top:18px;font-size:12.5px;color:var(--muted);text-align:center}
+.tabbar{display:none}
+h1{display:flex;align-items:center;gap:10px;font:700 34px/1.05 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
+h2{display:flex;align-items:center;gap:8px;font:600 21px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px}
+.sub{color:var(--muted);font-size:13px;margin:4px 0 0}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:14px}
+.head>div:first-child{flex:1;min-width:200px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 13px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap;text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+body.ro .w,body.out .w,body.out .side,body.out .tabbar{display:none!important}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px}
+.note{background:var(--soft);border-left:3px solid var(--warn);padding:9px 12px;border-radius:4px;font-size:13.5px;margin-bottom:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left}
+.tile:hover{border-color:var(--ink)}
+.tile b{display:block;font:700 34px/1 var(--display);font-variant-numeric:tabular-nums}
+.tile span{font-size:12.5px;color:var(--muted)}
+.tile.k{background:var(--ink);color:var(--paper);border-color:var(--ink)}.tile.k span{color:inherit;opacity:.75}
+.tile.att b{color:var(--accent)}
+.charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.bar{display:grid;grid-template-columns:118px 1fr 28px;gap:8px;align-items:center;font-size:13px;padding:3px 0}
+.bar .bt{height:14px;background:var(--soft);border-radius:2px;overflow:hidden}
+.bar .bt i{display:block;height:100%;background:var(--ink);border-radius:2px;min-width:0}
+.bar b{text-align:right;font-variant-numeric:tabular-nums}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center}
+.tools input[type=search],.tools select,.in{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+.tools input[type=search]{flex:1;min-width:170px}
+.count{font-size:13px;color:var(--muted);margin-left:auto}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font:600 12.5px var(--display);letter-spacing:.09em;text-transform:uppercase;text-align:left;background:var(--soft);padding:8px 10px;white-space:nowrap;position:sticky;top:0;cursor:default}
+th.s{cursor:pointer}th.s:hover{text-decoration:underline}
+td{padding:8px 10px;border-top:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+tbody tr.c{cursor:pointer}tbody tr.c:hover td{background:var(--soft)}
+td.n b{display:block}td.n small{color:var(--muted)}
+td.n,th.n{position:sticky;left:0;background:var(--card);z-index:1;box-shadow:1px 0 0 var(--line)}
+th.n{background:var(--soft);z-index:2}
+.chip{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid var(--line)}
+.chip.cg{color:var(--good);border-color:currentColor}.chip.cw{color:var(--warn);border-color:currentColor}.chip.cb{color:var(--bad);border-color:currentColor}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:12px 0;padding-bottom:2px}
+.tab{background:transparent;border:1px solid var(--line);border-radius:99px;padding:6px 13px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:13.5px}
+.tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rec{display:grid;grid-template-columns:132px 1fr;gap:14px;align-items:start}
+.photo{width:132px;height:160px;border:1px dashed var(--line);border-radius:6px;background:var(--soft);display:grid;place-items:center;color:var(--muted);font-size:12px;overflow:hidden;text-align:center}
+.photo img{width:100%;height:100%;object-fit:cover}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 14px}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fld span{font-size:12px;color:var(--muted);font-weight:500}
+.fld input,.fld select,.fld textarea{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 9px;width:100%;min-width:0}
+.fld input:disabled,.fld select:disabled{background:var(--soft);opacity:1;color:var(--ink)}
+.sec{margin-top:18px}
+.sgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.sgrid.q{grid-template-columns:1.6fr .6fr 1fr .6fr 1.2fr}
+.sgrid .lab{grid-column:1/-1;font-weight:600;font-size:13px;margin-top:4px}
+.saved{font-size:12.5px;color:var(--good);font-weight:600}
+#toasts{position:fixed;left:0;right:0;bottom:76px;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:60;padding:0 16px}
+.toast{background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:6px;font-size:14px;box-shadow:0 6px 20px #0005;pointer-events:auto;display:flex;gap:12px;align-items:center;max-width:520px}
+.toast.bad{background:var(--bad);color:#fff}
+.toast button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:5px;padding:2px 9px;cursor:pointer;font-weight:600}
+#modal{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:50;padding:16px}
+#modal.on{display:grid}
+.dlg{background:var(--card);color:var(--ink);border-radius:10px;max-width:560px;width:100%;max-height:92%;overflow:auto;padding:18px}
+.dlg h2{margin-bottom:8px}.dlg .row{justify-content:flex-end;margin-top:16px}
+.dlg p{margin:6px 0}
+.dlg textarea{width:100%;min-height:190px;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:13px}
+.hist{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:flex-start}
+.hist:first-child{border-top:0}
+.hist time{font-size:12px;color:var(--muted);width:92px;flex:none}
+.hist div{flex:1;min-width:0}.hist small{color:var(--muted);display:block;overflow-wrap:anywhere}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}.kv dt{color:var(--muted)}.kv dd{margin:0}
+.idc{max-width:420px;width:100%;border:1px solid var(--line);border-radius:8px;display:block}
+@media (max-width:820px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto}
+  .side{display:none}
+  .side.open{display:flex;position:fixed;inset:52px 0 58px 0;z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);background:var(--rail);color:var(--rail-ink);padding:4px 4px calc(4px + env(safe-area-inset-bottom))}
+  .tabbar a{flex-direction:column;gap:2px;font-size:11.5px;padding:6px 2px;justify-content:center}
+  .tabbar a.on{background:#ffffff22}
+  .tabbar svg{width:20px;height:20px}
+  main{padding:0 16px 90px}#scrollbtns{bottom:84px;right:12px}#scrollbtns button{width:42px;height:42px}#logo{height:44px;max-width:90px}.brand b{font-size:18px;white-space:normal;line-height:1.1}.tw{max-height:calc(100vh - 300px)}
+  h1{font-size:26px}h1 .ic{width:26px;height:26px}
+  .brand small{display:none}
+  .rec{grid-template-columns:1fr}
+  .photo{width:104px;height:126px}
+  .bar{grid-template-columns:104px 1fr 26px}
+  .sgrid,.sgrid.q{grid-template-columns:1fr 1fr}
+  .sgrid>.fld:first-of-type{grid-column:1/-1}
+  .pill span{display:none}
+}
+@media (prefers-reduced-motion:no-preference){.bar .bt i{transition:width .3s}}
+
+/* ---- Sign-in page ---- */
+body.out .top{display:none}
+body.out main{grid-column:1/-1;grid-row:1/-1;padding:0}
+.lg-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 16px;background:linear-gradient(160deg,var(--rail) 0 38%,var(--paper) 38%)}
+.lg-card{width:100%;max-width:980px;display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.lg-brand{background:var(--rail);color:var(--rail-ink);padding:40px 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;border-right:6px solid var(--accent)}
+.lg-logo{width:190px;height:190px;object-fit:contain;background:#fff;border-radius:16px;padding:10px}
+.lg-logo.none{display:flex;align-items:center;justify-content:center;font:700 54px var(--display);color:var(--accent)}
+.lg-title{font:700 44px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:6px 0 0;border:0;padding:0}
+.lg-brand .org{font-size:16px;opacity:.85;line-height:1.45}
+.lg-brand .sch{font:600 18px var(--display);letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--accent);padding:6px 14px;border-radius:999px}
+.lg-form{padding:44px 40px;display:flex;flex-direction:column;justify-content:center}
+.lg-form h1{font:700 40px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.lg-form h1 .ic{width:38px;height:38px}
+.lg-form .sub{font-size:16px;margin:0 0 22px}
+.lg-f{display:block;margin-bottom:18px}
+.lg-f>span{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;margin-bottom:8px}
+.lg-f>span .ic{width:22px;height:22px}
+.lg-f input,.lg-f select{width:100%;height:56px;font-size:19px;padding:0 16px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+.lg-f input:focus,.lg-f select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 20%,transparent)}
+.lg-go{width:100%;height:60px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:700 22px var(--display);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:12px;cursor:pointer;margin-top:6px}
+.lg-go .ic{width:28px;height:28px;color:#fff!important}
+.lg-go:disabled{opacity:.7;cursor:wait}
+.lg-go:hover:not(:disabled){filter:brightness(1.1)}
+.lg-help{font-size:14px;color:var(--muted);margin-top:16px;text-align:center}
+.lg-wrap .ownerfoot{max-width:980px;margin-top:18px}
+@media (max-width:760px){.lg-card{grid-template-columns:1fr}.lg-brand{border-right:0;border-bottom:6px solid var(--accent);padding:28px 20px}.lg-logo{width:130px;height:130px}.lg-title{font-size:34px}.lg-form{padding:28px 22px}.lg-form h1{font-size:32px}.lg-wrap{padding:0;justify-content:flex-start;background:var(--paper)}.lg-card{border-radius:0;box-shadow:none}}
+
+.pill.yr{background:#c8a400;color:#1d1f22;border-color:#c8a400;font-weight:700;font-size:14px;padding:5px 12px;cursor:pointer}
+.pill.yr.past{background:#b3261e;color:#fff;border-color:#b3261e}
+.pill.yr .ic{width:16px;height:16px}
+@media (max-width:760px){.bt,.yl{display:none}.pill.yr{font-size:13px;padding:4px 8px;gap:4px}}
+.prevpost{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 14px}
+.prevpost b{color:var(--accent)}
+.yrlist{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+.yrlist div{border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:120px}
+.yrlist div.on{border:2px solid #c8a400;background:color-mix(in srgb,#c8a400 12%,transparent)}
+.yrlist b{display:block;font-size:22px}
+</style>
+</head>
+<body class="out">
+<div id="app">
+  <header class="top">
+    <img id="logo" alt="School logo" hidden>
+    <div class="brand"><b>TDBMS<span class="bt"> Teachers Database</span></b><small id="orgline">Western Provincial Administration · Division of Education · Middle Fly District</small></div>
+    <button type="button" class="pill yr" id="yearpill" title="Database year" hidden></button>
+    <span class="pill" id="sync"><i></i><span>Connecting</span></span>
+    <button class="tbtn w" id="undo" disabled title="Undo your last change (Ctrl+Z)">↶ Undo</button>
+    <button class="tbtn w" id="redo" disabled title="Redo">↷</button>
+  </header>
+  <nav class="side" id="side"></nav>
+  <main id="main"><div class="empty">Starting…</div></main>
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+<div id="scrollbtns"><button type="button" id="sc_up" aria-label="Scroll to top" title="Scroll to top"></button><button type="button" id="sc_dn" aria-label="Scroll to bottom" title="Scroll to bottom"></button></div>
+<div id="toasts"></div>
+<div id="modal"></div>
+<datalist id="dl_teachers"></datalist>
+<datalist id="dl_schools"></datalist>
+<script>
+window.addEventListener('unhandledrejection',function(e){if(!window.__ok)window.onerror(e.reason&&e.reason.message||e.reason,'',0,0)});
+window.onerror=function(m,src,l,c){var e=document.getElementById('main');if(e&&!window.__ok)e.innerHTML='<div class="card"><b>The app could not start.</b><br>Send a photo of this message: '+String(m).replace(/</g,'&lt;')+' (line '+l+':'+c+')</div>'};
+</script>
+<script>
+(function(){
+'use strict';
+/* ---------- field model: same 80 columns as the TeachersDB sheet ---------- */
+const COLS=[
+['id','Teacher ID'],['surname','Surname'],['given','Given Name'],['gender','Gender','Gender'],['dob','Date of Birth','date'],['marital','Marital Status','Marital'],
+['phone','Phone'],['email','Email'],['province','Home Province'],['district','District'],['village','Village'],['denomination','Denomination'],
+['spouseName','Spouse Name'],['spouseOcc','Spouse Occupation'],['spousePhone','Spouse Phone'],['children','No. of Children','num'],
+['position','Position/Level'],['sector','Sector','Sector'],['school','School Name','school'],['schoolCode','School Code'],['category','School Category','Category'],['postStatus','Posting Status','PostStatus'],
+['firstAppointed','Date First Appointed','date'],['yearsService','Years of Service','num'],['qual','Highest Qualification','Qual'],['institution','Institution'],['onStudies','On Studies','YesNo'],['studyInst','Study Institution'],
+['leaveYear','Leave Entitlement Year','num'],['leaveStatus','Leave Status','LeaveStatus'],['transport','Method of Transport','Transport'],['transportCo','Transport Company'],['salaryScale','Salary Scale'],['remarks','Remarks'],
+['nid','NID No./Birth Cert. No'],['nationality','Nationality'],['spouseDob','Spouse DOB','date'],['spouseEmployer','Spouse Employer'],['spouseFileNo','Spouse File/Work No.'],
+['spouseProvince','Spouse Home Province'],['spouseDistrict','Spouse Home District'],['spouseLLG','Spouse Home LLG'],['spouseVillage','Spouse Home Village'],
+['dep1Name','Dependent 1 Name'],['dep1Dob','Dependent 1 DOB','date'],['dep1Rel','Dependent 1 Relationship','Relationship'],
+['dep2Name','Dependent 2 Name'],['dep2Dob','Dependent 2 DOB','date'],['dep2Rel','Dependent 2 Relationship','Relationship'],
+['dep3Name','Dependent 3 Name'],['dep3Dob','Dependent 3 DOB','date'],['dep3Rel','Dependent 3 Relationship','Relationship'],
+['dep4Name','Dependent 4 Name'],['dep4Dob','Dependent 4 DOB','date'],['dep4Rel','Dependent 4 Relationship','Relationship'],
+['college','College Attended'],['collegeProv','College Province'],['collegeYears','College Years'],['collegeQual','College Qualification'],
+['secSchool','Secondary School'],['secGrade','Secondary Grade'],['secProv','Secondary Province'],['secYears','Secondary Years'],['secQual','Secondary Qualification'],
+['fodeSchool','FODE School'],['fodeGrade','FODE Grade'],['fodeYear','FODE Year'],['fodeQual','FODE Qualification'],
+['posNo','Position Number'],['level','Level','Level'],['apptType','Appointment Type','AppointType'],['subLevel','Sub Level','Level'],['empStatus','Employment Status','EmpStatus'],
+['numDependents','No. of Dependents','num'],['leaveFrom','From (Present Posting)'],['leaveTo','To (Home District)'],['fileNo','File Number'],['eligibility','Teaching Eligibility','Level']];
+const FM={};COLS.forEach(([k,label,type])=>{FM[k]={k,label,type:type||'text'}});
+const KEYS=Object.keys(FM).filter(k=>k!=='id');
+const DEF_LISTS={Gender:['Male','Female'],Marital:['Single','Married','Widowed','Divorced'],Sector:['Elementary','Primary','Secondary','High School','Vocational','Technical','College'],
+Category:['Extreme Remote','Very Remote','Remote','Accessible','Highly Accessible'],PostStatus:['On Posting','Not on Posting','Pool','Suspension'],Qual:['Masters','Degree','Diploma','Certificate','Attainment'],
+YesNo:['Yes','No'],LeaveStatus:['Due This Year','Not Due','Outstanding'],Transport:['Air','Sea','Road','Air/Road','Sea/Road'],
+Level:['TS01','TS02','TS03','TS04','TS05','TS06','TS07','TS08','TS09','TS10','TS11','TS12','TS13','TS14'],AppointType:['Acting','Tenure'],EmpStatus:['PNG Citizen','Contract','Volunteer','Expatriate'],
+Relationship:['Son','Daughter','Adopted Child','Spouse','Other']};
+const LIST_NAMES={Gender:'Gender',Marital:'Marital status',Sector:'Sector',Category:'School category',PostStatus:'Posting status',Qual:'Qualification',LeaveStatus:'Leave status',Transport:'Method of transport',Level:'Level (TS)',AppointType:'Appointment type',EmpStatus:'Employment status',Relationship:'Dependent relationship'};
+const TABS=[
+ {id:'personal',t:'Personal',f:['surname','given','gender','dob','marital','children','phone','email','province','district','village','denomination','nid','nationality']},
+ {id:'spouse',t:'Spouse & dependents',f:['spouseName','spouseOcc','spousePhone','spouseDob','spouseEmployer','spouseFileNo','spouseProvince','spouseDistrict','spouseLLG','spouseVillage'],x:'deps'},
+ {id:'employment',t:'Employment',f:['position','firstAppointed','yearsService','salaryScale','sector','subLevel','empStatus','fileNo','eligibility']},
+ {id:'qual',t:'Qualification',f:['qual','institution','onStudies','studyInst'],x:'school'},
+ {id:'posting',t:'Posting',f:['school','schoolCode','category','postStatus','posNo','level','apptType','remarks']},
+ {id:'leave',t:'Leave fare',f:['leaveYear','leaveStatus','transport','transportCo','numDependents','leaveFrom','leaveTo']},
+ {id:'files',t:'Documents',f:[],x:'files'}];
+const REMOTE=['Remote','Very Remote','Extreme Remote'];
+const LX=['leaveYear','transport','transportCo','numDependents','leaveFrom','leaveTo'];
+const LISTS=[
+ {id:'postings',g:'Postings',t:'All postings (PostingsDB)',x:['firstAppointed','yearsService','posNo','level','apptType']},
+ {id:'on',g:'Postings',t:'On postings',f:t=>t.postStatus==='On Posting'},
+ {id:'noton',g:'Postings',t:'Not on postings',f:t=>t.postStatus==='Not on Posting'},
+ {id:'pool',g:'Postings',t:'Pool / suspension',f:t=>['Pool','Suspension'].includes(t.postStatus),x:['remarks']},
+ {id:'elem',g:'Postings',t:'Elementary postings',f:t=>t.sector==='Elementary'},
+ {id:'prim',g:'Postings',t:'Primary postings',f:t=>t.sector==='Primary'},
+ {id:'sec',g:'Postings',t:'Secondary postings',f:t=>['Secondary','High School'].includes(t.sector)},
+ {id:'voc',g:'Postings',t:'Vocational postings',f:t=>['Vocational','Technical','College'].includes(t.sector)},
+ {id:'leave',g:'Leave fare',t:'All leave fares (LeavefareDB)',x:['leaveYear','leaveStatus','transport','transportCo','numDependents','leaveFrom','leaveTo']},
+ {id:'onleave',g:'Leave fare',t:'On leave (due this year)',f:t=>t.leaveStatus==='Due This Year',x:LX},
+ {id:'notleave',g:'Leave fare',t:'Not on leave',f:t=>t.leaveStatus==='Not Due',x:['leaveYear']},
+ {id:'outstanding',g:'Leave fare',t:'Leave outstanding',f:t=>t.leaveStatus==='Outstanding',x:LX},
+ {id:'transport',g:'Leave fare',t:'Transport',f:t=>['Due This Year','Outstanding'].includes(t.leaveStatus),x:['leaveStatus','transport','transportCo'],fl:[['transport','Transport']]},
+ {id:'studies',g:'Other',t:'Studies',f:t=>t.onStudies==='Yes',x:['qual','studyInst']},
+ {id:'quals',g:'Other',t:'Qualifications',x:['qual','institution'],fl:[['qual','Qual'],['sector','Sector']]},
+ {id:'remote',g:'Other',t:'Remote teachers',f:t=>REMOTE.includes(t.category),fl:[['sector','Sector']]},
+ {id:'cats',g:'Other',t:'School categories',fl:[['category','Category']]}];
+const BASE=['fileNo','gender','position','sector','school','schoolCode','category','postStatus'];
+const NAV=[['home','Dashboard'],['teachers','Teachers'],['record','Entry form'],['lists','Lists'],['schools','School reports'],['transfers','Transfers'],null,['bin','Recycle bin'],['files','Attachments'],['activity','Activity'],['setup','Setup']];
+const ICON={home:'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',teachers:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9a8 8 0 0 1 16 0z',lists:'M4 6h16M4 12h16M4 18h16',schools:'M3 21V9l9-6 9 6v12h-6v-7H9v7z',more:'M5 12h.01M12 12h.01M19 12h.01'};
+
+/* ---------- state ---------- */
+const S={T:{},bin:{},hist:[],files:{},contacts:[],lists:null,org:null,view:'home',rec:null,mode:'view',draft:{},tab:'personal',list:'postings',q:{},sort:{k:'surname',d:1},loaded:false,canWrite:true,me:null,names:{},photo:{},X:{},trYear:String(new Date().getFullYear()),trType:'',role:'Editor',school:'(ALL SCHOOLS)',schoolMode:'name',filters:{}};
+let AUTH=null,pending=0,pollN=0;
+const undoSt=[],redoSt=[];
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const teachers=()=>Object.values(S.T).sort((a,b)=>cmp(a.surname,b.surname)||cmp(a.given,b.given));
+const cmp=(a,b)=>String(a??'').localeCompare(String(b??''),undefined,{numeric:true,sensitivity:'base'});
+const full=t=>`${t.surname||''}, ${t.given||''}  (${t.id})`;
+const nm=t=>`${t.surname||''}, ${t.given||''}`;
+const listOf=n=>(S.lists&&Array.isArray(S.lists[n])&&S.lists[n].length?S.lists[n]:DEF_LISTS[n])||[];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fdate=v=>{const m=/^(\d{4})-(\d\d)-(\d\d)/.exec(v||'');return m?`${m[3]}-${MON[+m[2]-1]}-${m[1]}`:(v||'')};
+const show=(t,k)=>FM[k]&&FM[k].type==='date'?fdate(t[k]):(t[k]??'');
+const idFrom=s=>{const m=/\(([^()]+)\)\s*$/.exec(s||'');return m?m[1].trim():''};
+const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+/* ---------- small UI helpers ---------- */
+function toast(msg,kind,action){const d=document.createElement('div');d.className='toast'+(kind?' '+kind:'');d.textContent=msg;
+  if(action){const b=document.createElement('button');b.textContent=action.label;b.onclick=()=>{d.remove();action.fn()};d.appendChild(b)}
+  $('#toasts').appendChild(d);setTimeout(()=>d.remove(),action?7000:3800)}
+function dialog(html){const m=$('#modal');m.innerHTML=`<div class="dlg" role="dialog" aria-modal="true">${html}</div>`;m.classList.add('on');return m.firstChild}
+function closeDialog(){const m=$('#modal');m.classList.remove('on');m.innerHTML=''}
+function ask(title,body,ok='OK',danger){return new Promise(res=>{const d=dialog(`<h2>${esc(title)}</h2><div>${body}</div><div class="row"><button class="btn" id="d_no">Cancel</button><button class="btn ${danger?'go':'pri'}" id="d_ok">${esc(ok)}</button></div>`);
+  $('#d_no',d).onclick=()=>{closeDialog();res(false)};$('#d_ok',d).onclick=()=>{closeDialog();res(true)};$('#d_ok',d).focus()})}
+function setSync(state,text){const p=$('#sync');p.className='pill '+state;p.lastElementChild.textContent=text}
+
+/* ---------- server calls, writes, undo ---------- */
+// Installed app (GitHub Pages): talk to the Google Sheet through the TDBMS link in config.js. Google page: use google.script.run.
+async function apiFetch(fn,args){const url=String(window.TDBMS_API||'');
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url))throw new Error('DENIED: This app is not connected yet. The administrator must paste the TDBMS link (ending in /exec) into config.js.');
+  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),90000);let res;
+  try{res=await fetch(url,{method:'POST',body:JSON.stringify({fn,args}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',signal:ac.signal})}
+  catch(e){throw new Error('NetworkError: '+(e&&e.name==='AbortError'?'timed out':'connection failure'))}finally{clearTimeout(tm)}
+  if(!res.ok)throw new Error('NetworkError: HTTP '+res.status);
+  let j;try{j=await res.json()}catch(e){throw new Error('DENIED: The TDBMS link did not answer correctly. Check config.js, and that the deployment gives access to "Anyone".')}
+  if(!j.ok)throw new Error(j.error);return j.r}
+const call=(fn,...a)=>window.TDBMS_API!==undefined?apiFetch(fn,a):new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...a));
+let chain=Promise.resolve();
+function server(fn,...a){pending++;const p=chain.then(()=>call(fn,AUTH,...a));chain=p.catch(()=>{});return p.finally(()=>{pending--})}
+const errText=e=>{const m=String(e&&e.message||e||'');const x=/(AUTH|DENIED|GONE): (.*)$/.exec(m);if(x)return x[2];if(/over 8 MB|no longer in the register/.test(m))return m.replace(/^.*Error: /,'');return 'Could not reach the database. Check your connection and try again.'};
+const swap=ops=>ops.slice().reverse().map(o=>({p:o.p,b:o.a,a:o.b}));
+function localApply(ops){for(const o of ops){const [kind,id]=o.p.split('/');
+    if(kind==='teachers'||kind==='bin'||kind==='transfers'){const m=kind==='teachers'?S.T:kind==='bin'?S.bin:S.X;if(o.a==null)delete m[id];else if(o.b==null||!m[id])m[id]={...o.a,id};else m[id]={...m[id],...o.a}}
+    else if(kind==='settings'){if(id==='contacts'){S.contacts=o.a?o.a.rows:[];S.hasContacts=!!o.a}if(id==='lists')S.lists=o.a;if(id==='years'&&o.a){S.Y=o.a;paintYear()}}
+    else if(kind==='photos')S.photo[id]=o.a?o.a.img:''}}
+/* ---------- database years ---------- */
+const actY=()=>S.Y?S.Y.active:new Date().getFullYear();
+function paintYear(){const p=$('#yearpill');if(!p||!S.Y)return;p.hidden=false;p.classList.toggle('past',!!S.viewYear);
+  p.innerHTML=S.viewYear?`${ic('calendar','#fff')}<span class="yl"> Viewing</span> ${S.viewYear}<span class="yl"> · read only</span>`:`${ic('calendar','#1d1f22')}<span class="yl"> Year</span> ${S.Y.active}`;
+  const b=$('.brand small');if(b&&!b.dataset.base)b.dataset.base=b.textContent;if(b)b.textContent=b.dataset.base+' · '+(S.viewYear?S.viewYear+' (closed year)':'Active year '+S.Y.active)}
+async function viewYear(y){y=Number(y);if(!y||y===actY()){if(S.viewYear){S.T=S.liveT||S.T;S.viewYear=null;S.liveT=null;S.canWrite=S.role!=='Viewer';document.body.classList.toggle('ro',!S.canWrite);paintYear();btns();render();toast('Back to the active year '+actY()+'.')}return}
+  setSync('saving','Loading '+y);try{const rows=await call('apiYear',AUTH,y);if(!rows.length){setSync('live','Live');return toast('There is no saved copy of '+y+'.','bad')}
+   const m={};rows.forEach(t=>m[t.id]=t);if(!S.viewYear)S.liveT=S.T;S.T=m;S.viewYear=y;S.canWrite=false;document.body.classList.add('ro');paintYear();setSync('live','Live');
+   if(S.rec&&!S.T[S.rec])S.rec=null;render();toast(`Showing the saved copy of ${y}. Read only.`)}catch(e){setSync('off','Offline');toast(errText(e),'bad')}}
+function yearDialog(){const Y=S.Y,ys=[Y.first,Y.first+1,Y.first+2];
+  const d=dialog(`<h2>Database year</h2><p class="sub">The active year is <b>${Y.active}</b>. Earlier years can be viewed but not changed.</p>
+   <div class="yrlist">${ys.map(y=>`<div class="${(S.viewYear||Y.active)===y?'on':''}"><b>${y}</b><span class="sub">${y===Y.active?'Active':y<Y.active?'Closed · view only':'Not started'}</span>${y<=Y.active&&(S.viewYear||Y.active)!==y?`<div style="margin-top:6px;border:0;padding:0;min-width:0"><button class="btn sm" data-y="${y}">${y===Y.active?'Back to '+y:'View '+y}</button></div>`:''}</div>`).join('')}</div>
+   <div class="row" style="justify-content:flex-end"><button class="btn" data-act="close">Close</button></div>`);
+  d.querySelectorAll('[data-y]').forEach(b=>b.onclick=()=>{closeDialog();viewYear(b.dataset.y)})}
+async function startNextYear(){const Y=S.Y,ny=Y.active+1;if(ny>Y.first+2)return toast(`${Y.active} is the last year of the period ${Y.first}–${Y.first+2}. Change the first year below to continue.`,'bad');
+  if(waiting())return toast('Wait until all offline changes have uploaded.','bad');
+  if(!(await ask(`Start ${ny}?`,`<p>A <b>read-only copy of ${Y.active}</b> will be saved (Google Sheet tab "Year ${Y.active}"). You can view it any time from the year button at the top.</p><p><b>Every teacher carries over to ${ny}</b> with their ${Y.active} details: posting, position, school and all other records. Change only what is different in ${ny}. The Posting tab shows each teacher's ${Y.active} posting for comparison.</p><p>Press Undo straight after if you started the year by mistake.</p>`,'Start '+ny)))return;
+  setSync('saving','Saving '+Y.active);try{const n=await server('apiSnapshot',Y.active);
+   if(await commit(`Started year ${ny} (copy of ${Y.active} saved: ${n} teachers)`,[{p:'settings/years',b:{...Y},a:{...Y,active:ny}}])){S.Y={...Y,active:ny};paintYear();try{ingest(await call('apiPoll',AUTH,-1))}catch(e){}render();toast(`Year ${ny} started. ${n} teachers carried over.`)}}
+  catch(e){setSync('off','Not saved');toast(errText(e),'bad')}}
+async function saveYears(){const Y=S.Y,first=Number($('#yr_first').value),district=$('#yr_d').value.trim()||'Middle Fly',province=$('#yr_p').value.trim()||'Western';
+  if(!(first>2000&&first<2100))return toast('Enter a first year such as 2027.','bad');
+  let active=Y.active;if(active<first||active>first+2){if(!(await ask('Change the active year?',`<p>The active year ${active} is outside ${first}–${first+2}. The active year will become <b>${first}</b>.</p>`,'Continue')))return;active=first}
+  if(await commit('Database years set to '+first+'–'+(first+2),[{p:'settings/years',b:{...Y},a:{first,active,district,province}}])){S.Y={first,active,district,province};paintYear();render();toast('Saved.')}}
+function ingest(st){if(st&&st.T&&!st.__cached)cacheState(st);S.ver=st.ver;S.me=st.me;S.role=st.role;S.canWrite=st.role!=='Viewer'&&!S.viewYear;S.sheetUrl=st.sheetUrl;document.body.classList.toggle('ro',!S.canWrite);
+  S.Y=st.Y||S.Y||{first:new Date().getFullYear(),active:new Date().getFullYear(),district:'Middle Fly',province:'Western'};S.prev=st.prev||{};paintYear();
+  const m={};st.T.forEach(t=>m[t.id]=t);if(S.viewYear)S.liveT=m;else S.T=m;const xx={};(st.X||[]).forEach(t=>xx[t.id]=t);S.X=xx;const b={};st.bin.forEach(t=>b[t.id]={...t,deletedAt:+t.deletedAt});S.bin=b;
+  S.hist=st.hist.map(h=>({...h,at:+h.at}));S.contacts=st.contacts;S.hasContacts=st.hasContacts;S.lists=st.lists;const f={};st.files.forEach(x=>f[x.id]={...x,at:+x.at});S.files=f}
+/* ---------- offline outbox: changes made without network wait here, then upload ---------- */
+const isNet=e=>{const m=String(e&&e.message||e||'');if(/(AUTH|DENIED|GONE): /.test(m))return false;return !navigator.onLine||/network|HTTP 0|connection|timed? ?out|failed to fetch|unable to|load failed/i.test(m)};
+function outbox(v){try{if(v===undefined)return JSON.parse(localStorage.getItem('tdbms_outbox')||'[]');v.length?localStorage.setItem('tdbms_outbox',JSON.stringify(v)):localStorage.removeItem('tdbms_outbox')}catch(e){return []}}
+function cacheState(st){try{localStorage.setItem('tdbms_cache',JSON.stringify(st))}catch(e){}}
+function cachedState(){try{return JSON.parse(localStorage.getItem('tdbms_cache')||'null')}catch(e){return null}}
+function waiting(){return outbox().filter(x=>AUTH&&x.by===AUTH.name).length}
+function offPill(){const n=waiting();setSync('off',n?`Offline · ${n} waiting`:'Offline')}
+function queue(label,ops,light){const q=outbox();q.push({label,ops:JSON.parse(JSON.stringify(ops)),light:!!light,by:AUTH.name,at:Date.now()});outbox(q);offPill()}
+function reapplyOutbox(){if(S.viewYear)return;outbox().filter(x=>AUTH&&x.by===AUTH.name).forEach(x=>localApply(x.ops))}
+let flushing=false;
+async function flush(){if(flushing||!AUTH)return false;let q=outbox();if(!q.some(x=>x.by===AUTH.name))return false;flushing=true;let last=null,sent=0;const map={},touched=new Set();
+  setSync('saving','Uploading');
+  try{for(;;){q=outbox();const i=q.findIndex(x=>x.by===AUTH.name);if(i<0)break;const it=q[i];
+      it.ops.forEach(o=>{const [k,id]=o.p.split('/');if(map[id]){o.p=k+'/'+map[id];if(o.a&&o.a.id)o.a.id=map[id]}});
+      try{const r=await server('apiApply',it.label+' (entered offline)',it.ops,it.light);last=r;sent++;Object.assign(map,r.ids||{});it.ops.forEach(o=>{const [k,id]=o.p.split('/');if(k==='teachers'&&o.a)touched.add(map[id]||id)});Object.keys(r.ids||{}).forEach(o=>{if(S.rec===o)S.rec=r.ids[o]})}
+      catch(e){if(isNet(e)){offPill();return false}if(/AUTH/.test(String(e&&e.message))){flushing=false;signOut(true);return false}
+        toast('One offline change could not be saved: '+errText(e),'bad')}
+      q=outbox();q.splice(q.indexOf(q.find(x=>x.at===it.at&&x.by===it.by)),1);outbox(q)}
+    if(last){ingest(last.state);reapplyOutbox();soon()}
+    const warn=[];touched.forEach(id=>{const t=S.T[id];if(!t)return;const d=dups(id,t,0);if(d.length)warn.push(`<p><b>${esc(full(t))}</b>:</p><ul>${d.map(x=>`<li>${x}</li>`).join('')}</ul>`)});
+    if(warn.length)setTimeout(()=>ask('Check these offline entries',`<p>While you were offline, someone else may have entered the same teacher. Please check:</p>${warn.join('')}<p>Open each record and fix it, or move the extra one to the Recycle Bin.</p>`,'OK'),300);
+    setSync('live',S.canWrite?'Live':'Live · view only');if(sent)toast(`Uploaded ${sent} change(s) made while offline.`);return true}
+  finally{flushing=false}}
+window.addEventListener('online',()=>{if(S.loaded)flush().then(()=>poll())});
+async function send(label,ops,light){if(!S.canWrite||!ops.length)return null;setSync('saving','Saving');localApply(ops);soon();
+  if(waiting()){queue(label,ops,light);flush();return {ids:{},queued:true}}
+  try{const r=await server('apiApply',label,ops,!!light);if(!pending)ingest(r.state);setSync('live','Live');soon();return r}
+  catch(e){if(isNet(e)){queue(label,ops,light);toast('No network. Saved on this device. It will upload by itself when the network is back.');return {ids:{},queued:true}}
+    setSync('off','Not saved');toast(errText(e),'bad');if(/AUTH/.test(String(e&&e.message)))return signOut(true),null;try{ingest(await call('apiPoll',AUTH,-1));render()}catch(x){}return null}}
+function remap(ops,ids){Object.keys(ids||{}).forEach(o=>{ops.forEach(x=>{if(x.p==='teachers/'+o){x.p='teachers/'+ids[o];if(x.a)x.a.id=ids[o]}});if(S.rec===o)S.rec=ids[o]})}
+async function commit(label,ops,opt={}){const r=await send(label,ops,opt.light);if(!r)return false;remap(ops,r.ids);ops.forEach(o=>delete o.auto);
+  if(opt.stack!==false){undoSt.push({label,ops,light:opt.light});if(undoSt.length>100)undoSt.shift();redoSt.length=0}btns();return true}
+async function doUndo(){const u=undoSt.pop();if(!u)return;if(!(await send('Undo: '+u.label,swap(u.ops),u.light))){btns();return}
+  redoSt.push(u);btns();toast('Undone: '+u.label,'',{label:'Redo',fn:doRedo})}
+async function doRedo(){const u=redoSt.pop();if(!u)return;if(!(await send('Redo: '+u.label,u.ops,u.light))){btns();return}
+  undoSt.push(u);btns();toast('Redone: '+u.label)}
+function btns(){$('#undo').disabled=!undoSt.length;$('#redo').disabled=!redoSt.length;$('#undo').title=undoSt.length?'Undo: '+undoSt[undoSt.length-1].label:'Nothing to undo'}
+$('#yearpill').onclick=()=>{if(S.Y)yearDialog()};$('#undo').onclick=doUndo;$('#redo').onclick=doRedo;
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();e.shiftKey?doRedo():doUndo()}});
+
+/* ---------- teacher operations ---------- */
+function nextId(){let mx=0;[...Object.keys(S.T),...Object.keys(S.bin)].forEach(id=>{const n=parseInt(String(id).slice(4),10);if(n>mx)mx=n});return 'TSC-'+String(mx+1).padStart(4,'0')}
+function dups(exId,v,mode){const out=[];let n,f,p;const eq=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+  for(const t of teachers()){if(t.id===exId)continue;
+    if((!mode||mode===1)&&v.surname&&v.given&&!n&&eq(t.surname,v.surname)&&eq(t.given,v.given))n=full(t);
+    if((!mode||mode===2)&&v.fileNo&&!f&&(eq(t.fileNo,v.fileNo)||eq(t.id,v.fileNo)))f=full(t);
+    if((!mode||mode===3)&&v.posNo&&!p&&eq(t.posNo,v.posNo))p=full(t)}
+  if(n)out.push(`Same name already exists: <b>${esc(n)}</b>`);if(f)out.push(`File number ${esc(v.fileNo)} is already used by <b>${esc(f)}</b>`);if(p)out.push(`Position number ${esc(v.posNo)} is already held by <b>${esc(p)}</b>`);return out}
+const DUPMODE={surname:1,given:1,fileNo:2,posNo:3};
+function clean(k,v){v=String(v??'').trim();if(k==='surname')v=v.toUpperCase();return v}
+async function saveField(k,v,el){const t=S.T[S.rec];if(!t)return;v=clean(k,v);const old=String(t[k]??'');if(v===old)return;
+  if(DUPMODE[k]){const d=dups(t.id,{...t,[k]:v},DUPMODE[k]);if(d.length&&!(await ask('Duplicate detected',d.map(x=>`<p>${x}</p>`).join('')+'<p>Keep this entry anyway?</p>','Keep it'))){if(el)el.value=old;return}}
+  const b={[k]:old},a={[k]:v};
+  if(k==='school'&&v){const o=teachers().find(x=>x.id!==t.id&&String(x.school||'').toLowerCase()===v.toLowerCase());
+    if(o)['schoolCode','category'].forEach(f=>{if(!t[f]&&o[f]){b[f]='';a[f]=o[f]}})}
+  if(await commit(`${FM[k].label} of ${nm(t)}`,[{p:'teachers/'+t.id,b,a}])){const s=$('#savednote');if(s){s.textContent='Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}}}
+async function saveNew(){const d={};KEYS.forEach(k=>d[k]=clean(k,S.draft[k]));if(!d.surname){toast('Surname is required.','bad');S.tab='personal';render();return}
+  const dd=dups('',d,0);if(dd.length&&!(await ask('Duplicate detected',dd.map(x=>`<p>${x}</p>`).join('')+'<p>Save this teacher anyway?</p>','Save anyway')))return;
+  const id=nextId();d.id=id;S.rec=id;S.mode='view';if(await commit(`Added ${nm(d)}`,[{p:'teachers/'+id,b:null,a:d,auto:true}])){S.draft={};toast(`Saved with ID ${S.rec}.`);render()}else{S.mode='new';S.rec=null;render()}}
+async function delTeacher(id){const t=S.T[id];if(!t)return;if(!(await ask('Delete this teacher?',`<p><b>${esc(full(t))}</b></p><p>The record moves to the Recycle bin and can be restored within 30 days.</p>`,'Delete',true)))return;
+  if(await commit(`Deleted ${nm(t)}`,[{p:'teachers/'+id,b:t,a:null},{p:'bin/'+id,b:null,a:{...t,deletedAt:Date.now()}}])){S.rec=null;go('teachers');toast('Moved to the Recycle bin.','',{label:'Undo',fn:doUndo})}}
+async function restore(id){const r=S.bin[id];if(!r)return;const t={...r};delete t.deletedAt;let nid=id;if(S.T[id]){nid=nextId();t.id=nid}
+  if(await commit(`Restored ${nm(t)}`,[{p:'bin/'+id,b:r,a:null},{p:'teachers/'+nid,b:null,a:t,auto:true}]))toast(nid===id?'Teacher restored.':`ID ${id} was already in use. Restored as ${nid}.`)}
+
+/* ---------- rendering ---------- */
+function navHtml(){const cnt={teachers:Object.keys(S.T).length,bin:Object.keys(S.bin).length,files:Object.keys(S.files).length};
+  $('#side').innerHTML=NAV.map(n=>n?`<a data-go="${n[0]}" class="${S.view===n[0]?'on':''}">${ic(VIEW_IC[n[0]])}${esc(n[1])}${cnt[n[0]]?`<span class="badge">${cnt[n[0]]}</span>`:''}</a>`:'<div class="sep">Records office</div>').join('');
+  const tb=[['home','Home'],['teachers','Teachers'],['lists','Lists'],['schools','Schools'],['more','More']];
+  $('#tabbar').innerHTML=tb.map(([v,l])=>`<a data-go="${v}" class="${S.view===v||(v==='more'&&!['home','teachers','lists','schools'].includes(S.view))?'on':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[v]}"/></svg>${l}</a>`).join('')}
+function go(v,noHash){S.view=v;$('#side').classList.remove('open');render();$('#main').scrollTop=0}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-go]');if(a){e.preventDefault();const v=a.dataset.go;if(v==='more'){$('#side').classList.toggle('open');return}
+    if(v==='record'&&a.dataset.id){S.rec=a.dataset.id;S.mode='view'}if(a.dataset.list)S.list=a.dataset.list;go(v);return}
+  const b=e.target.closest('[data-act]');if(b&&ACT[b.dataset.act])ACT[b.dataset.act](b)});
+let raf=0;function soon(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;refresh()})}
+function refresh(){navHtml();fillLists();const ae=document.activeElement;if((S.view==='setup'||(S.view==='record'&&S.mode==='new'))&&ae&&$('#main').contains(ae)&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName))return;if(S.view==='record'&&S.mode==='view'&&S.rec&&S.T[S.rec]&&$('#recform')){patchForm();return}
+  const body=$('#vbody');if(body&&VIEWS[S.view].body&&$('#main').dataset.v===S.view){body.innerHTML=VIEWS[S.view].body();decorate();return}render()}
+function render(){navHtml();fillLists();const m=$('#main');if(!S.loaded){m.innerHTML=`<div class="empty">${S.loadMsg||'Loading the shared database…'}</div>`;return}
+  m.dataset.v=S.view;m.innerHTML=(S.viewYear?`<div class="note">You are looking at the saved copy of <b>${S.viewYear}</b>. It cannot be changed. <button class="btn sm" data-act="yrback">Back to ${actY()}</button></div>`:S.canWrite?'':'<div class="note">You have view-only access. Ask the administrator to change your role to Editor.</div>')+VIEWS[S.view].html();if(VIEWS[S.view].after)VIEWS[S.view].after();decorate()}
+function fillLists(){$('#dl_teachers').innerHTML=teachers().map(t=>`<option value="${esc(full(t))}">`).join('');$('#dl_schools').innerHTML=schools().map(s=>`<option value="${esc(s)}">`).join('')}
+const schools=()=>[...new Set(teachers().map(t=>String(t.school||'').trim()).filter(Boolean))].sort(cmp);
+const statusChip=v=>{const c={'On Posting':'cg','Not Due':'cg','Due This Year':'cw','Pool':'cw','Not on Posting':'cw','Suspension':'cb','Outstanding':'cb'}[v];return v?`<span class="chip ${c||''}">${esc(v)}</span>`:''};
+const cell=(t,k)=>k==='postStatus'||k==='leaveStatus'?statusChip(t[k]):esc(show(t,k));
+function match(t,q){if(!q)return true;q=q.toLowerCase();return [t.id,t.fileNo,t.surname,t.given,t.school,t.schoolCode,t.posNo].some(v=>String(v||'').toLowerCase().includes(q))}
+function tableHtml(rows,cols,sortable){if(!rows.length)return `<div class="tw"><div class="empty">No teachers match.</div></div>`;
+  return `<div class="tw"><table><thead><tr><th>No.</th><th class="n ${sortable?'s':''}" data-act="${sortable?'sort':''}" data-k="surname">Teacher</th>${cols.map(k=>`<th class="${sortable?'s':''}" data-act="${sortable?'sort':''}" data-k="${k}">${esc(FM[k].label)}</th>`).join('')}</tr></thead><tbody>${
+    rows.map((t,i)=>`<tr class="c" data-go="record" data-id="${esc(t.id)}"><td>${i+1}</td><td class="n"><b>${esc(nm(t))}</b><small>${esc(t.id)}</small></td>${cols.map(k=>`<td>${cell(t,k)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+
+
+/* ---------- icons (outline, Windows 11 style colours) ---------- */
+const ICO={
+ home:['M3 11l9-8 9 8M5 9.5V20h5v-6h4v6h5V9.5','#0078d4'],
+ people:['M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.5a6.5 6.5 0 0 1 3.5 5.5','#0078d4'],
+ form:['M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7','#8764b8'],
+ list:['M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01','#038387'],
+ school:['M3 21h18M5 21V10l7-5 7 5v11M10 21v-5h4v5M12 11h.01','#ca5010'],
+ bin:['M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3','#c50f1f'],
+ clip:['M20 11l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.5 3.5 0 0 1 5 5L10 17a2 2 0 0 1-3-3l7.5-7.5','#c19c00'],
+ history:['M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 3','#8764b8'],
+ gear:['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.8 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3.2 14H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1A1.7 1.7 0 0 0 10 3.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.8 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 20.8 10h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z','#69797e'],
+ user:['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0','#0078d4'],
+ calendar:['M4 6h16v15H4zM4 10h16M8 3v4M16 3v4','#c50f1f'],
+ phone:['M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2','#107c10'],
+ mail:['M3 6h18v12H3zM3 7l9 6 9-6','#0078d4'],
+ pin:['M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z','#c50f1f'],
+ heart:['M12 20s-8-4.7-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.3 12 20 12 20z','#c239b3'],
+ child:['M12 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 21v-6l-2-3 3-1h6l3 1-2 3v6M12 15v6','#ca5010'],
+ cap:['M2 9l10-5 10 5-10 5zM6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6','#8764b8'],
+ hash:['M5 9h15M4 15h15M10 3L8 21M16 3l-2 18','#038387'],
+ badge:['M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8-4.2-4.1 5.8-.8z','#c19c00'],
+ plane:['M10.5 13.5L3 11l1.5-1.5 8 1 4.5-5a1.8 1.8 0 0 1 2.5 2.5l-5 4.5 1 8L14 22l-2.5-7.5-3 2.5v2.5L7 21l-1-3-3-1 1.5-1.5H7z','#0078d4'],
+ flag:['M5 21V4M5 4h12l-2.5 4L17 12H5','#ca5010'],
+ check:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6','#107c10'],
+ briefcase:['M3 8h18v12H3zM8 8V5h8v3M3 13h18','#8e562e'],
+ note:['M5 4h14v16H5zM9 9h6M9 13h6M9 17h3','#c19c00'],
+ upload:['M12 16V4M7 9l5-5 5 5M4 20h16','#107c10'],
+ sheet:['M4 4h16v16H4zM4 10h16M4 15h16M10 4v16','#107c10'],
+ id:['M3 6h18v12H3zM9 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5.5 16a3.5 3.5 0 0 1 7 0M15 10h3M15 14h3','#038387'],
+ image:['M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15 9h.01','#8764b8'],
+ chart:['M4 20V10M10 20V4M16 20v-7M22 20H2','#038387'],
+ up:['M12 19V5M5 12l7-7 7 7','#0078d4'],
+ down:['M12 5v14M5 12l7 7 7-7','#0078d4'],
+ swap:['M4 8h14l-4-4M20 16H6l4 4','#ca5010'],
+ signin:['M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3','#ffffff'],
+ lock:['M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4M12 15v2','#c50f1f'],
+ dot:['M9 12h6','#69797e']};
+const ic=(n,col)=>{const c=ICO[n]||ICO.dot;return `<svg class="ic" style="color:${col||c[1]}" viewBox="0 0 24 24" aria-hidden="true"><path d="${c[0]}"/></svg>`};
+const VIEW_IC={transfers:'swap',home:'home',teachers:'people',record:'form',lists:'list',schools:'school',bin:'bin',files:'clip',activity:'history',setup:'gear'};
+const TAB_IC={personal:'user',spouse:'heart',employment:'briefcase',qual:'cap',posting:'school',leave:'plane',files:'clip'};
+const H2_IC=[[/posting/,'pin'],[/sector/,'school'],[/leave/,'plane'],[/categor/,'flag'],[/qualif|schooling/,'cap'],[/transport/,'plane'],[/dependent/,'child'],[/document/,'upload'],[/excel/,'sheet'],[/email/,'mail'],[/dropdown/,'list'],[/users/,'people'],[/id card/,'id'],[/logo/,'image'],[/owner/,'user'],[/transfer/,'swap'],[/sign in/,'user']];
+function fieldIc(k){if(/^dep\d(Dob)?$/.test(k)&&/Dob/.test(k))return 'calendar';if(/^dep\d/.test(k))return 'child';
+ if(/[dD]ob|firstAppointed|[yY]ear/.test(k))return 'calendar';if(/[pP]hone/.test(k))return 'phone';if(/email/.test(k))return 'mail';
+ if(/[pP]rovince|[dD]istrict|[vV]illage|LLG|leaveFrom|leaveTo|Prov$/.test(k))return 'pin';if(/^spouse/.test(k))return 'heart';
+ if(/posNo|fileNo|FileNo|nid|schoolCode/.test(k))return 'hash';if(/[sS]chool|college|fode/.test(k))return 'school';
+ if(/qual|Qual|institution|Inst|onStudies|Grade/.test(k))return 'cap';if(/level|Level|eligibility|salaryScale/.test(k))return 'badge';
+ if(/transport/.test(k))return 'plane';if(/category/.test(k))return 'flag';if(/Status|apptType/.test(k))return 'check';
+ if(/position/.test(k))return 'briefcase';if(/remarks/.test(k))return 'note';if(/numDependents|children/.test(k))return 'child';return 'user'}
+function decorate(){const m=$('#main');if(!m)return;
+ m.querySelectorAll('h1').forEach(h=>{if(!h.querySelector('.ic'))h.insertAdjacentHTML('afterbegin',ic(S.view==='record'?(S.mode==='new'?'user':'id'):VIEW_IC[S.view]))});
+ document.querySelectorAll('h2').forEach(h=>{if(h.querySelector('.ic'))return;const t=h.textContent.toLowerCase(),f=H2_IC.find(x=>x[0].test(t));h.insertAdjacentHTML('afterbegin',ic(f?f[1]:'chart'))});
+ m.querySelectorAll('.tab[data-id]').forEach(b=>{if(!b.querySelector('.ic'))b.insertAdjacentHTML('afterbegin',ic(TAB_IC[b.dataset.id]))});
+ m.querySelectorAll('.fld').forEach(l=>{const sp=l.querySelector('span'),k=(l.getAttribute('for')||'').replace(/^f_/,'');if(sp&&!sp.querySelector('.ic')&&FM[k])sp.insertAdjacentHTML('afterbegin',ic(fieldIc(k)))})}
+const OWNER=['Mr Saun Aloksep, HM','Tom Hoey Primary School','Middle Fly District, W/P','Phone: 74621880','Email: saun.aloksep115@gmail.com'];
+const ownerFoot=()=>`<p class="ownerfoot">System owner: ${OWNER.map(esc).join(' · ')}</p>`;
+function paintLogo(){const l=$('#logo');if(!l)return;if(S.logo){l.src=S.logo;l.hidden=false}else{l.hidden=true;l.removeAttribute('src')}}
+function shrinkLogo(file){return new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{URL.revokeObjectURL(u);let w=Math.min(480,im.width),out='';
+  for(let t=0;t<8&&w>=60;t++){const h=Math.round(im.height*w/im.width),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(im,0,0,w,h);
+   out=c.toDataURL('image/png');if(out.length<=45000)return res(out);const c2=document.createElement('canvas');c2.width=w;c2.height=h;const y=c2.getContext('2d');y.fillStyle='#fff';y.fillRect(0,0,w,h);y.drawImage(im,0,0,w,h);
+   out=c2.toDataURL('image/jpeg',.85);if(out.length<=45000)return res(out);w=Math.round(w*.75)}rej()};im.onerror=rej;im.src=u})}
+
+const VIEWS={};
+/* Dashboard */
+function tally(k,names,f){const T=teachers().filter(f||(()=>true));return names.map(n=>[n,T.filter(t=>t[k]===n).length])}
+function chart(title,rows){const mx=Math.max(1,...rows.map(r=>r[1]));return `<div class="card"><h2>${esc(title)}</h2>${rows.map(([l,n])=>`<div class="bar"><span>${esc(l)}</span><span class="bt"><i style="width:${n/mx*100}%"></i></span><b>${n}</b></div>`).join('')}</div>`}
+VIEWS.home={html(){return `<div class="head"><div><h1>Dashboard</h1><p class="sub">Key statistics update as soon as anyone saves a change.</p></div><div class="row"><button class="btn go w" data-act="new">+ Add teacher</button></div></div><div id="vbody">${this.body()}</div>`},
+ body(){const T=teachers(),c=f=>T.filter(f).length;if(!T.length)return `<div class="card empty">No teachers in the database yet.<div class="row w" style="justify-content:center;margin-top:12px"><button class="btn go" data-act="new">+ Add teacher</button><button class="btn" data-go="setup">Import from Excel</button></div></div>`;
+  const tiles=[['Total teachers',T.length,'teachers','','k'],['On posting',c(t=>t.postStatus==='On Posting'),'lists','on'],['Not on posting',c(t=>t.postStatus==='Not on Posting'),'lists','noton'],['Pool / suspension',c(t=>['Pool','Suspension'].includes(t.postStatus)),'lists','pool','att'],
+   ['Leave due this year',c(t=>t.leaveStatus==='Due This Year'),'lists','onleave'],['Leave outstanding',c(t=>t.leaveStatus==='Outstanding'),'lists','outstanding','att'],['On studies',c(t=>t.onStudies==='Yes'),'lists','studies'],['Remote schools staff',c(t=>REMOTE.includes(t.category)),'lists','remote'],
+   ['Male',c(t=>t.gender==='Male'),'teachers',''],['Female',c(t=>t.gender==='Female'),'teachers',''],['Schools',schools().length,'schools',''],['Documents uploaded',Object.keys(S.files).length,'files',''],['Transfers in '+(S.viewYear||actY()),Object.values(S.X).filter(x=>String(x.date||'').startsWith(String(S.viewYear||actY()))).length,'transfers','']];
+  const sec=[['Elementary',c(t=>t.sector==='Elementary')],['Primary',c(t=>t.sector==='Primary')],['Secondary / High',c(t=>['Secondary','High School'].includes(t.sector))],['Voc / Tech / College',c(t=>['Vocational','Technical','College'].includes(t.sector))]];
+  const due=t=>['Due This Year','Outstanding'].includes(t.leaveStatus);
+  return `<div class="tiles">${tiles.map(([l,n,v,li,cl])=>`<button class="tile ${cl||''}" data-go="${v}" data-list="${li}"><b>${n}</b><span>${l}</span></button>`).join('')}</div>
+  <div class="charts">${chart('Posting status',tally('postStatus',listOf('PostStatus')))}${chart('Sector',sec)}${chart('Leave status',tally('leaveStatus',listOf('LeaveStatus')))}${chart('School category',tally('category',listOf('Category')))}${chart('Qualification',tally('qual',listOf('Qual')))}${chart('Transport (leave due / outstanding)',tally('transport',listOf('Transport'),due))}</div>${ownerFoot()}`}};
+/* Teachers master list */
+VIEWS.teachers={html(){return `<div class="head"><div><h1>Teachers</h1><p class="sub">Master record. Tap a teacher to open the entry form.</p></div><div class="row"><button class="btn go w" data-act="new">+ Add teacher</button></div></div>
+  <div class="tools"><input type="search" id="q_teachers" placeholder="Search name, Empl. No, File No, school" value="${esc(S.q.teachers||'')}"><span class="count" id="cnt"></span></div><div id="vbody">${this.body()}</div>`},
+ body(){const all=teachers();let rows=all.filter(t=>match(t,S.q.teachers));const {k,d}=S.sort;rows.sort((a,b)=>(cmp(a[k],b[k])||cmp(a.surname,b.surname)||cmp(a.given,b.given))*d);
+  setTimeout(()=>{const c=$('#cnt');if(c)c.textContent=`${rows.length} of ${all.length} shown`});
+  return tableHtml(rows,['fileNo','gender','position','sector','school','schoolCode','category','postStatus','posNo','level','qual','leaveStatus','phone'],true)}};
+/* Lists */
+VIEWS.lists={html(){const L=LISTS.find(l=>l.id===S.list)||LISTS[0];const groups=[...new Set(LISTS.map(l=>l.g))];
+  return `<div class="head"><div><h1>Lists</h1><p class="sub">The posting, leave fare and qualification sheets, built live from the master record.</p></div></div>
+  <div class="tools"><select id="listpick" aria-label="Choose list">${groups.map(g=>`<optgroup label="${g}">${LISTS.filter(l=>l.g===g).map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.t)}</option>`).join('')}</optgroup>`).join('')}</select>
+  ${(L.fl||[]).map(([k,ln])=>`<select data-filter="${k}" aria-label="Filter ${esc(FM[k].label)}"><option value="">All: ${esc(FM[k].label)}</option>${listOf(ln).map(o=>`<option ${S.filters[k]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`).join('')}
+  <input type="search" id="q_lists" placeholder="Search Empl. No, File No or name" value="${esc(S.q.lists||'')}">
+  <select id="listsort" aria-label="Sort"><option value="surname" ${S.listSort!=='schoolCode'?'selected':''}>Sort by surname</option><option value="schoolCode" ${S.listSort==='schoolCode'?'selected':''}>Sort by school code</option></select><span class="count" id="cnt"></span></div><div id="vbody">${this.body()}</div>`},
+ body(){const L=LISTS.find(l=>l.id===S.list)||LISTS[0];let base=teachers().filter(L.f||(()=>true));(L.fl||[]).forEach(([k])=>{if(S.filters[k])base=base.filter(t=>t[k]===S.filters[k])});
+  let rows=base.filter(t=>match(t,S.q.lists));if(S.listSort==='schoolCode')rows.sort((a,b)=>cmp(a.schoolCode,b.schoolCode)||cmp(a.surname,b.surname));
+  setTimeout(()=>{const c=$('#cnt');if(c)c.textContent=`${rows.length} of ${base.length} shown`});return tableHtml(rows,[...BASE,...(L.x||[])])}};
+/* School reports */
+VIEWS.schools={html(){return `<div class="head"><div><h1>School reports</h1><p class="sub">Staffing by school, with position numbers and eligibility.</p></div></div>
+  <div class="tools"><select id="schoolpick" aria-label="Select school"><option>(ALL SCHOOLS)</option>${schools().map(s=>`<option ${S.school===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
+  <select id="schoolmode" aria-label="Report order"><option value="name" ${S.schoolMode==='name'?'selected':''}>School Filter: teachers A to Z</option><option value="pos" ${S.schoolMode==='pos'?'selected':''}>Schools &amp; Teachers: position number high to low</option></select>
+  <input type="search" id="q_schools" placeholder="Search Empl. No or name" value="${esc(S.q.schools||'')}"></div><div id="vbody">${this.body()}</div>`},
+ body(){const all=S.school==='(ALL SCHOOLS)';let rows=teachers().filter(t=>String(t.school||'').trim()&&(all||t.school===S.school));const pos=S.schoolMode==='pos';
+  rows.sort((a,b)=>cmp(a.school,b.school)||(pos?-cmp(a.posNo,b.posNo):cmp(a.surname,b.surname)||cmp(a.given,b.given)));const f=rows[0]||{};const tot=rows.length;rows=rows.filter(t=>match(t,S.q.schools));
+  const cols=['schoolCode','posNo','level',...(pos?['position']:[]),'fileNo','apptType','eligibility','subLevel'];
+  const info=`<div class="card" style="margin-bottom:10px"><dl class="kv"><dt>School code</dt><dd>${all?'-':esc(f.schoolCode||'')}</dd><dt>School category</dt><dd>${all?'-':esc(f.category||'')}</dd><dt>Sector</dt><dd>${all?'-':esc(f.sector||'')}</dd><dt>Total teachers</dt><dd><b>${tot}</b></dd></dl></div>`;
+  if(!rows.length)return info+`<div class="tw"><div class="empty">No teachers found for this school.</div></div>`;
+  return info+`<div class="tw"><table><thead><tr><th>No.</th><th class="n">Teacher</th><th>School Name</th>${cols.map(k=>`<th>${esc({level:'Position Level',position:'Position Designation',apptType:'Status (Acting/Tenure)',subLevel:'Teacher Sub Level'}[k]||FM[k].label)}</th>`).join('')}</tr></thead><tbody>${
+   rows.map((t,i)=>`<tr class="c" data-go="record" data-id="${esc(t.id)}"><td>${i+1}</td><td class="n"><b>${esc(nm(t))}</b><small>${esc(t.id)}</small></td><td>${esc(t.school)}</td>${cols.map(k=>`<td>${cell(t,k)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}};
+/* Entry form */
+function fld(k,t,cls){const f=FM[k],v=String(t[k]??''),id='f_'+k,dis=S.canWrite?'':'disabled';let inp;
+  if(DEF_LISTS[f.type]){const o=listOf(f.type);inp=`<select id="${id}" data-k="${k}" ${dis}><option value=""></option>${[...new Set([...o,...(v?[v]:[])])].map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('')}</select>`}
+  else inp=`<input id="${id}" data-k="${k}" type="${f.type==='date'?'date':'text'}" ${f.type==='num'?'inputmode="numeric"':''} ${f.type==='school'?'list="dl_schools"':''} value="${esc(v)}" autocomplete="off" ${dis}>`;
+  return `<label class="fld ${cls||''}" for="${id}"><span>${esc(f.short||f.label)}</span>${inp}</label>`}
+function short(k,s){FM[k].short=s}
+[['spouseEmployer','Employer'],['spouseFileNo','File/Work No.'],['spouseProvince','Home Province'],['spouseDistrict','Home District'],['spouseLLG','Home LLG'],['spouseVillage','Home Village'],['apptType','Type (Acting/Tenure)']].forEach(a=>short(...a));
+function prevCard(t){if(S.viewYear||S.mode==='new'||!t)return '';const p=S.prev&&S.prev[t.id],py=actY()-1;
+  if(!p)return S.Y&&S.Y.active>S.Y.first?`<div class="prevpost"><b>${py} posting:</b> <span class="sub">not in the ${py} copy (new this year).</span></div>`:'';
+  const same=['school','schoolCode','position','postStatus','level','posNo'].every(k=>String(p[k]||'')===String(t[k]||''));
+  return `<div class="prevpost"><b>${py} posting:</b> ${esc([p.school,p.schoolCode&&'('+p.schoolCode+')',p.position,p.level,p.postStatus,p.posNo&&'Pos. '+p.posNo].filter(Boolean).join(' · ')||'none recorded')}
+   <div class="sub" style="margin-top:4px">${same?'Carried over unchanged to '+actY()+'. Change any box below if this teacher\'s '+actY()+' posting is different.':'Changed for '+actY()+' (see the boxes below).'}</div></div>`}
+function tabHtml(tab,t){let h=(tab.id==='posting'?prevCard(t):'')+(tab.f.length?`<div class="grid">${tab.f.map(k=>fld(k,t)).join('')}</div>`:'');
+  if(tab.x==='deps'){h+=`<div class="sec"><h2>Dependents</h2>`;for(let i=1;i<=4;i++){['Name','Dob','Rel'].forEach((s,j)=>short(`dep${i}${s}`,['Name','Date of birth','Relationship'][j]));h+=`<div class="sgrid"><div class="lab">Dependent ${i}</div>${fld(`dep${i}Name`,t)}${fld(`dep${i}Dob`,t)}${fld(`dep${i}Rel`,t)}</div>`}h+='</div>'}
+  if(tab.x==='school'){const g=(lab,ks,ls)=>{ks.forEach((k,i)=>short(k,ls[i]));return `<div class="sgrid q"><div class="lab">${lab}</div>${ks.map(k=>fld(k,t)).join('')}</div>`};
+   h+=`<div class="sec"><h2>Schooling</h2>${g('College attended',['college','collegeProv','collegeYears','collegeQual'],['Institution','Province','Years','Qualification'])}${g('Secondary',['secSchool','secGrade','secProv','secYears','secQual'],['School','Grade','Province','Years','Qualification'])}${g('FODE',['fodeSchool','fodeGrade','fodeYear','fodeQual'],['School','Grade','Year','Qualification'])}</div>`}
+  if(tab.x==='files')h+=filesPanel(t);
+  if(tab.id==='posting'&&S.mode!=='new'){const tx=Object.values(S.X).filter(x=>x.tid===t.id).sort((a,b)=>cmp(b.date,a.date));
+   h+=`<div class="sec"><h2>Transfer history</h2>${tx.length?`<div class="tw" style="min-height:0"><table><thead><tr><th>Date</th><th>Type</th><th>From</th><th>To</th><th>Status</th></tr></thead><tbody>${tx.map(x=>`<tr><td>${esc(fdate(x.date))}</td><td>${esc(trType(x))}</td><td>${esc(trFrom(x))}</td><td>${esc(trTo(x))}</td><td>${trChip(x.status)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="sub">No transfers recorded for this teacher.</p>'}</div>`}
+  return h}
+function filesPanel(t){if(S.mode==='new')return '<div class="empty">Save the teacher first, then add documents.</div>';const mine=Object.entries(S.files).filter(([,f])=>f.tid===t.id);
+  let h=`<div class="tw">${mine.length?`<table><thead><tr><th>Category</th><th>Item</th><th>File</th><th>Uploaded</th><th></th></tr></thead><tbody>${mine.map(([id,f])=>`<tr><td>${esc(f.cat)}</td><td>${esc(f.item)}</td><td><button type="button" class="btn sm" data-act="fileopen" data-id="${id}">${esc(f.name)}</button></td><td>${new Date(f.at).toLocaleDateString()}</td><td><button class="btn sm danger w" data-act="filedel" data-id="${id}">Remove</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">No documents for this teacher yet.</div>'}</div>`;
+  if(S.canWrite)h+=`<div class="card w" style="margin-top:10px"><h2>Add a document</h2><div class="grid"><label class="fld" for="up_cat"><span>Category</span><select id="up_cat"><option>Birth Certificate</option><option>Foster Certificate</option><option>Leave Form</option><option>Ticket Proforma</option><option>Other</option></select></label><label class="fld" for="up_item"><span>Item (e.g. Dependent 1, Leave 2026)</span><input id="up_item"></label><label class="fld" for="up_file"><span>PDF, image or Word file, up to 8 MB</span><input type="file" id="up_file"></label></div><div class="row" style="margin-top:10px"><button type="button" class="btn pri" data-act="fileup">Upload</button></div></div>`;return h}
+VIEWS.record={html(){const isNew=S.mode==='new',t=isNew?S.draft:S.T[S.rec];
+  const pick=`<div class="tools"><input type="search" id="pick" list="dl_teachers" placeholder="Search / select teacher" value="${t&&!isNew?esc(full(t)):''}" aria-label="Search or select teacher"><button class="btn go w" data-act="new">+ Add teacher</button></div>`;
+  if(!t)return `<div class="head"><div><h1>Entry form</h1><p class="sub">Pick a teacher to view or edit, or add a new one.</p></div></div>${pick}<div class="card empty">${S.rec?'That teacher is no longer in the database. It may have been deleted by another user.':'No teacher selected.'}</div>`;
+  const tab=TABS.find(x=>x.id===S.tab)||TABS[0];
+  return `<div class="head"><div><h1>${isNew?'New teacher':esc(nm(t))}</h1><p class="sub">${isNew?`Teacher ID is generated when you save (next: ${nextId()}).`:`${esc(t.id)} · ${esc(t.position||'')}${t.school?' · '+esc(t.school):''} <span class="saved" id="savednote"></span>`}</p></div>
+  <div class="row">${isNew?`<button class="btn" data-act="cancelnew">Cancel</button><button class="btn go" data-act="savenew">Save new teacher</button>`:`<button class="btn" data-act="idcard">ID card</button><button class="btn" data-act="email">Email officer</button><button class="btn danger w" data-act="del">Delete</button>`}</div></div>
+  ${isNew?'':pick}${isNew?'':'<p class="sub w" style="margin:-4px 0 0">Changes save automatically when you leave a field. Use Undo to take one back.</p>'}
+  <div class="tabs" role="tablist">${TABS.filter(x=>!(isNew&&x.id==='files')).map(x=>`<button class="tab ${x.id===tab.id?'on':''}" data-act="tab" data-id="${x.id}" role="tab">${x.t}</button>`).join('')}</div>
+  <form id="recform" class="card" onsubmit="return false">${tab.id==='personal'&&!isNew?`<div class="rec"><div><div class="photo" id="photo">No ID photo</div><div class="row w" style="margin-top:6px"><label class="btn sm" for="ph_in">Add photo</label><input type="file" id="ph_in" accept="image/*" hidden><button type="button" class="btn sm" data-act="phclear">Clear</button></div></div><div>${tabHtml(tab,t)}</div></div>`:tabHtml(tab,t)}</form>`},
+ after(){if(S.mode==='view'&&S.rec)loadPhoto(S.rec)}};
+function patchForm(){const t=S.T[S.rec];document.querySelectorAll('#recform [data-k]').forEach(el=>{if(el===document.activeElement)return;const v=String(t[el.dataset.k]??'');if(el.value!==v){if(el.tagName==='SELECT'&&![...el.options].some(o=>o.value===v))el.add(new Option(v,v));el.value=v}});
+  if(S.tab==='files'){const f=$('#recform');if(f&&!f.contains(document.activeElement))f.innerHTML=tabHtml(TABS.find(x=>x.id==='files'),t)}
+  const h=$('#main h1');if(h)h.textContent=nm(t)}
+async function loadPhoto(id){const box=$('#photo');if(!box)return;const put=img=>{const b=$('#photo');if(b&&S.rec===id)b.innerHTML=img?`<img alt="ID photo" src="${img}">`:'No ID photo'};
+  if(id in S.photo)return put(S.photo[id]);try{S.photo[id]=await call('apiPhoto',AUTH,id);put(S.photo[id])}catch(e){}}
+
+/* Transfers */
+const TR=[['tid','Teacher ID'],['name','Teacher name'],['fileNo','File No'],['type','Transfer type'],['date','Date effective'],['fromSchool','From school'],['fromDistrict','From district'],['fromProvince','From province'],
+ ['toSchool','To school'],['toCode','To school code'],['toDistrict','To district'],['toProvince','To province'],['position','Position'],['ref','Approval / instrument No'],['reason','Reason'],['status','Status'],['remarks','Remarks']];
+const TR_TYPES=['School to school (same district)','In: from another district (same province)','In: from another province','Out: to another district (same province)','Out: to another province'];
+const TR_OLD={'From another district':TR_TYPES[1],'From another province':TR_TYPES[2]};
+const trType=x=>TR_OLD[x.type]||x.type;
+// for each type, which of [from district, from province, to district, to province] is this database's own district/province
+const TR_HOME={[TR_TYPES[0]]:[1,1,1,1],[TR_TYPES[1]]:[0,1,1,1],[TR_TYPES[2]]:[0,0,1,1],[TR_TYPES[3]]:[1,1,0,1],[TR_TYPES[4]]:[1,1,0,0]};
+const TR_STATUS=['Pending','Approved','Arrived / took up duty','Cancelled'];
+const trChip=v=>v?`<span class="chip ${{'Arrived / took up duty':'cg','Approved':'cw','Pending':'cw','Cancelled':'cb'}[v]||''}">${esc(v)}</span>`:'';
+const trFrom=x=>[x.fromSchool,x.fromDistrict,x.fromProvince].filter(Boolean).join(', ');
+const trTo=x=>[x.toSchool,x.toDistrict,x.toProvince].filter(Boolean).join(', ');
+VIEWS.transfers={html(){const yrs=[...new Set([String(new Date().getFullYear()),...Object.values(S.X).map(x=>String(x.date||'').slice(0,4)).filter(Boolean)])].sort().reverse();
+  return `<div class="head"><div><h1>Transfers</h1><p class="sub">Teachers moving school mid-year, or arriving from another district or province.</p></div><div class="row"><button class="btn go w" data-act="trnew">+ Record transfer</button></div></div>
+  <div class="tools"><select id="trf_year" aria-label="Year"><option value="">All years</option>${yrs.map(y=>`<option ${S.trYear===y?'selected':''}>${y}</option>`).join('')}</select>
+  <select id="trf_type" aria-label="Transfer type"><option value="">All transfer types</option>${TR_TYPES.map(t=>`<option ${S.trType===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+  <input type="search" id="q_transfers" placeholder="Search name, File No, school" value="${esc(S.q.transfers||'')}"></div><div id="vbody">${this.body()}</div>`},
+ body(){let all=Object.values(S.X).filter(x=>!S.trYear||String(x.date||'').startsWith(S.trYear));const q=(S.q.transfers||'').toLowerCase();
+  const cnt=t=>all.filter(x=>trType(x)===t&&x.status!=='Cancelled').length;
+  let rows=all.filter(x=>!S.trType||trType(x)===S.trType).filter(x=>!q||[x.name,x.fileNo,x.tid,x.fromSchool,x.toSchool,x.ref].join(' ').toLowerCase().includes(q)).sort((a,b)=>cmp(b.date,a.date));
+  const tiles=`<div class="tiles">${[['School to school (same district)',cnt(TR_TYPES[0])],['In from another district',cnt(TR_TYPES[1])],['In from another province',cnt(TR_TYPES[2])],['Out to another district',cnt(TR_TYPES[3])],['Out to another province',cnt(TR_TYPES[4])],['Pending / approved',all.filter(x=>['Pending','Approved'].includes(x.status)).length]].map(([l,n],i)=>`<div class="tile ${i===5?'att':''}" style="cursor:default"><b>${n}</b><span>${l}</span></div>`).join('')}</div>`;
+  if(!rows.length)return tiles+`<div class="tw"><div class="empty">No transfers recorded${S.trYear?' for '+esc(S.trYear):''}.</div></div>`;
+  return tiles+`<div class="tw"><table><thead><tr><th>No.</th><th>Date</th><th class="n">Teacher</th><th>File No</th><th>Type</th><th>From</th><th>To</th><th>Approval No</th><th>Status</th></tr></thead><tbody>${
+   rows.map((x,i)=>`<tr class="c" data-act="tredit" data-id="${esc(x.id)}"><td>${i+1}</td><td>${esc(fdate(x.date))}</td><td class="n"><b>${esc(x.name)}</b><small>${esc(x.tid||'not in database')}</small></td><td>${esc(x.fileNo)}</td><td>${esc(trType(x))}</td><td>${esc(trFrom(x))}</td><td>${esc(trTo(x))}</td><td>${esc(x.ref)}</td><td>${trChip(x.status)}</td></tr>`).join('')}</tbody></table></div>`}};
+function trForm(id){const old=id?S.X[id]:null,x={...(old||{status:'Pending',date:new Date().toISOString().slice(0,10)})};
+  const f=(k,l)=>{const v=esc(x[k]||'');let inp;
+   if(k==='type'){const cur=x[k]?trType(x):'',opts=TR_TYPES.includes(cur)||!cur?TR_TYPES:[...TR_TYPES,cur];inp=`<select id="tr_${k}"><option value=""></option>${opts.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')}</select>`}
+   else if(k==='status')inp=`<select id="tr_${k}">${TR_STATUS.map(o=>`<option ${o===x[k]?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+   else if(k==='date')inp=`<input id="tr_${k}" type="date" value="${v}">`;
+   else if(k==='reason'||k==='remarks')inp=`<input id="tr_${k}" value="${v}">`;
+   else inp=`<input id="tr_${k}" value="${v}" ${/School$/.test(k)?'list="dl_schools"':''} ${k==='tid'?'readonly':''} autocomplete="off">`;
+   return `<label class="fld" for="tr_${k}"><span>${l}</span>${inp}</label>`};
+  const d=dialog(`<h2>${old?'Edit transfer':'Record transfer'}</h2>
+   <label class="fld" for="tr_pick"><span>Teacher already in the database? Pick them (leave blank for a new arrival)</span><input id="tr_pick" list="dl_teachers" value="${x.tid&&S.T[x.tid]?esc(full(S.T[x.tid])):''}" autocomplete="off"></label>
+   <div class="grid" style="margin-top:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${TR.map(([k,l])=>f(k,l)).join('')}</div>
+   <label id="tr_updl" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px"><input type="checkbox" id="tr_upd"> Also change this teacher's school in the master record to the "To school"</label>
+   <div class="row" style="justify-content:space-between"><span>${old?'<button class="btn danger" id="tr_del">Delete</button>':''}</span><span class="row"><button class="btn" data-act="close">Cancel</button><button class="btn go" id="tr_save">Save transfer</button></span></div>`);
+  const g=k=>$('#tr_'+k,d);
+  g('pick').onchange=()=>{const t=S.T[idFrom(g('pick').value)];if(!t)return;g('tid').value=t.id;g('name').value=nm(t);g('fileNo').value=t.fileNo||'';g('position').value=t.position||'';if(!g('fromSchool').value)g('fromSchool').value=t.school||''};
+  g('type').onchange=()=>{const m=TR_HOME[g('type').value];if(!m)return;const D=S.Y.district,P=S.Y.province;
+   [['fromDistrict',D,0],['fromProvince',P,1],['toDistrict',D,2],['toProvince',P,3]].forEach(([k,v,i])=>{const el=g(k);if(m[i])el.value=v;else if(el.value===v)el.value=''});
+   const out=/^Out:/.test(g('type').value);$('#tr_updl',d).style.display=out?'none':'flex';if(out)g('upd').checked=false};
+  g('status').onchange=()=>{if(/Arrived/.test(g('status').value)&&g('tid').value&&!/^Out:/.test(g('type').value))g('upd').checked=true};
+  g('save').onclick=async()=>{const r={};TR.forEach(([k])=>r[k]=g(k).value.trim());
+   if(!r.name)return toast('Enter the teacher name, or pick the teacher.','bad');if(!r.type)return toast('Choose the transfer type.','bad');if(!r.date)return toast('Enter the date effective.','bad');
+   const nid=id||'TR-'+Date.now().toString(36).toUpperCase();r.id=nid;r.by=old?old.by||S.me:S.me;r.at=old?old.at:new Date().toISOString().slice(0,10);
+   const ops=[{p:'transfers/'+nid,b:old,a:r}];const t=S.T[r.tid];
+   if(g('upd').checked&&t&&r.toSchool){const b={school:t.school||'',schoolCode:t.schoolCode||''},a={school:r.toSchool,schoolCode:r.toCode||t.schoolCode||''};ops.push({p:'teachers/'+t.id,b,a})}
+   closeDialog();if(await commit(`${old?'Updated':'Recorded'} transfer of ${r.name}`,ops))toast(old?'Transfer updated.':'Transfer recorded.')};
+  const del=$('#tr_del',d);if(del)del.onclick=async()=>{closeDialog();if(await commit(`Deleted transfer of ${old.name}`,[{p:'transfers/'+id,b:old,a:null}]))toast('Transfer deleted.','',{label:'Undo',fn:doUndo})}}
+
+/* Recycle bin */
+VIEWS.bin={html(){return `<div class="head"><div><h1>Recycle bin</h1><p class="sub">Deleted teachers are kept 30 days, then removed.</p></div><div class="row w"><button class="btn danger" data-act="binempty">Empty recycle bin</button></div></div><div id="vbody">${this.body()}</div>`},
+ body(){const rows=Object.values(S.bin).sort((a,b)=>b.deletedAt-a.deletedAt);if(!rows.length)return '<div class="tw"><div class="empty">The recycle bin is empty.</div></div>';
+  return `<div class="tw"><table><thead><tr><th class="n">Teacher</th><th>Deleted on</th><th>Days left</th><th>School</th><th>Position</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td class="n"><b>${esc(nm(t))}</b><small>${esc(t.id)}</small></td><td>${new Date(t.deletedAt).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}</td><td>${Math.max(0,30-Math.floor((Date.now()-t.deletedAt)/864e5))}</td><td>${esc(t.school)}</td><td>${esc(t.position)}</td><td><button class="btn sm pri w" data-act="restore" data-id="${esc(t.id)}">Restore</button></td></tr>`).join('')}</tbody></table></div>`}};
+/* Attachments register */
+VIEWS.files={html(){return `<div class="head"><div><h1>Attachments</h1><p class="sub">Birth and foster certificates, leave forms, ticket proformas. Upload from a teacher's Documents tab.</p></div></div><div class="tools"><input type="search" id="q_files" placeholder="Search Empl. No or name" value="${esc(S.q.files||'')}"></div><div id="vbody">${this.body()}</div>`},
+ body(){const q=(S.q.files||'').toLowerCase();const rows=Object.entries(S.files).map(([id,f])=>({id,...f,t:S.T[f.tid]})).filter(f=>!q||(f.tid+' '+(f.t?nm(f.t)+' '+f.t.fileNo:'')+' '+f.name).toLowerCase().includes(q)).sort((a,b)=>b.at-a.at);
+  if(!rows.length)return '<div class="tw"><div class="empty">No documents uploaded yet.</div></div>';
+  return `<div class="tw"><table><thead><tr><th>No.</th><th class="n">Teacher</th><th>File No</th><th>Category</th><th>Item</th><th>File name</th><th>Uploaded on</th></tr></thead><tbody>${rows.map((f,i)=>`<tr><td>${i+1}</td><td class="n"><b>${esc(f.t?nm(f.t):'(deleted)')}</b><small>${esc(f.tid)}</small></td><td>${esc(f.t?f.t.fileNo:'')}</td><td>${esc(f.cat)}</td><td>${esc(f.item)}</td><td><button class="btn sm" data-act="fileopen" data-id="${f.id}">${esc(f.name)}</button></td><td>${new Date(f.at).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}</td></tr>`).join('')}</tbody></table></div>`}};
+/* Activity */
+VIEWS.activity={html(){return `<div class="head"><div><h1>Activity</h1><p class="sub">Every change, by every user, newest first. Revert puts the old values back.</p></div></div><div class="card" id="vbody">${this.body()}</div>`},
+ body(){if(!S.hist.length)return '<div class="empty">No changes recorded yet.</div>';return S.hist.map(h=>{let det='';try{const o=h.ops&&JSON.parse(h.ops);if(o&&o.length===1&&o[0].a&&o[0].b)det=Object.keys(o[0].a).map(k=>`${FM[k]?FM[k].label:k}: ${o[0].b[k]||'(blank)'} → ${o[0].a[k]||'(blank)'}`).join('; ')}catch(e){}
+   return `<div class="hist"><time>${new Date(h.at).toLocaleString([], {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</time><div><b>${esc(h.label)}</b><small>${esc(h.by===S.me?'You':h.by||'A user')}${det?' · '+esc(det):''}</small></div>${h.ops?`<button class="btn sm w" data-act="revert" data-id="${h.id}">Revert</button>`:''}</div>`}).join('')}};
+/* Setup */
+VIEWS.setup={html(){return `<div class="head"><div><h1>Setup</h1><p class="sub">Signed in as ${esc(S.me)} (${esc(S.role)}).</p></div><div class="row"><button class="btn" data-act="signout">Sign out</button></div></div>
+  ${S.role==='Admin'?`<div class="card" style="margin-bottom:12px"><h2>Users and data</h2><p class="sub" style="margin-bottom:10px">Add or remove officers, and change PINs, on the Users tab of the Google Sheet. All records are kept in the same sheet.</p><div class="row"><a class="btn pri" href="${esc(S.sheetUrl)}" target="_blank" rel="noopener">Open the Google Sheet</a></div></div>`:''}
+  ${(()=>{const Y=S.Y||{},ys=[Y.first,Y.first+1,Y.first+2],adm=S.role==='Admin'&&!S.viewYear;
+   return `<div class="card" style="margin-bottom:12px"><h2>Database years</h2><p class="sub" style="margin-bottom:6px">The database runs for 3 years. Each new year starts with every teacher carried over from the year before; a read-only copy of each finished year is kept.</p>
+   <div class="yrlist">${ys.map(y=>`<div class="${y===Y.active?'on':''}"><b>${y}</b><span class="sub">${y===Y.active?'Active year':y<Y.active?'Closed · view only':'Not started'}</span></div>`).join('')}</div>
+   ${adm?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))"><label class="fld" for="yr_first"><span>First year of the 3</span><input id="yr_first" type="number" min="2000" max="2099" value="${Y.first}"></label>
+   <label class="fld" for="yr_d"><span>This district</span><input id="yr_d" value="${esc(Y.district||'')}"></label><label class="fld" for="yr_p"><span>This province</span><input id="yr_p" value="${esc(Y.province||'')}"></label></div>
+   <div class="row" style="margin-top:10px"><button class="btn" data-act="yrsave">Save years</button>${Y.active<Y.first+2?`<button class="btn go" data-act="yrnext">Start ${Y.active+1}</button>`:'<span class="sub">'+Y.active+' is the last year of this period.</span>'}</div>`:`<p class="sub">${S.viewYear?'Go back to the active year to change these.':'Only an Admin can change the years.'}</p>`}</div>`})()}
+  <div class="card" style="margin-bottom:12px"><h2>System owner</h2><div class="owner"><b>${esc(OWNER[0])}</b><br>${OWNER.slice(1).map(esc).join('<br>')}</div></div>
+  <div class="card" style="margin-bottom:12px"><h2>School logo</h2><p class="sub" style="margin-bottom:10px">Shown at the top of every page, for every user. Use a PNG or JPG; it is resized to fit.</p>
+  <div class="row">${S.logo?`<img src="${S.logo}" alt="Current logo" style="height:80px;max-width:240px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px">`:'<span class="sub">No logo yet.</span>'}
+  <label class="btn pri w" for="logo_in">${S.logo?'Change logo':'Add logo'}</label><input type="file" id="logo_in" accept="image/*" hidden>${S.logo?'<button class="btn danger w" data-act="logodel">Remove logo</button>':''}</div></div>
+  <div class="card" style="margin-bottom:12px"><h2>Excel</h2><p class="sub" style="margin-bottom:10px">Import reads the TeachersDB sheet of your TDBMS workbook (.xlsm or .xlsx). Teachers are matched on Teacher ID: new IDs are added, existing ones updated. Export saves every teacher in the same column layout.</p>
+  <div class="row"><label class="btn pri w" for="imp_in">Import from Excel</label><input type="file" id="imp_in" accept=".xlsx,.xlsm,.xls,.csv" hidden><button class="btn" data-act="export">Export to Excel</button></div></div>
+  <div class="card" style="margin-bottom:12px"><h2>Email contacts</h2><div id="contacts">${S.contacts.map((c,i)=>`<div class="sgrid"><label class="fld" for="c_r${i}"><span>Role</span><input id="c_r${i}" data-c="${i}" data-ck="role" value="${esc(c.role)}"></label><label class="fld" for="c_o${i}"><span>Officer</span><input id="c_o${i}" data-c="${i}" data-ck="officer" value="${esc(c.officer)}"></label><label class="fld" for="c_e${i}"><span>Email address</span><input id="c_e${i}" data-c="${i}" data-ck="email" value="${esc(c.email)}"></label></div>`).join('')||'<p class="sub">No contacts yet.</p>'}</div><div class="row w" style="margin-top:8px"><button class="btn sm" data-act="cadd">+ Add contact</button></div></div>
+  <div class="card"><h2>Dropdown lists</h2><p class="sub" style="margin-bottom:10px">One option per line. Changes apply for every user.</p><div class="grid">${Object.keys(LIST_NAMES).map(n=>`<label class="fld" for="l_${n}"><span>${LIST_NAMES[n]}</span><textarea id="l_${n}" data-list="${n}" rows="${Math.min(8,listOf(n).length+1)}">${esc(listOf(n).join('\n'))}</textarea></label>`).join('')}</div></div>`}};
+
+/* ---------- actions ---------- */
+const ACT={
+ new(){S.mode='new';S.draft={};S.tab='personal';go('record')},
+ cancelnew(){S.mode='view';S.draft={};go(S.rec?'record':'teachers')},
+ savenew:saveNew,
+ del(){delTeacher(S.rec)},
+ tab(b){S.tab=b.dataset.id;render()},
+ sort(b){const k=b.dataset.k;S.sort=S.sort.k===k?{k,d:-S.sort.d}:{k,d:1};refresh()},
+ restore(b){restore(b.dataset.id)},
+ async binempty(){const ids=Object.keys(S.bin);if(!ids.length)return toast('The recycle bin is already empty.');if(await ask('Empty the recycle bin?',`<p>Permanently delete all ${ids.length} teacher(s) in the bin?</p>`,'Delete all',true))commit('Emptied the recycle bin',ids.map(id=>({p:'bin/'+id,b:S.bin[id],a:null})))},
+ async revert(b){const h=S.hist.find(x=>x.id===b.dataset.id);if(!h||!h.ops)return;if(!(await ask('Revert this change?',`<p><b>${esc(h.label)}</b></p><p>The values from before this change are put back.</p>`,'Revert')))return;
+  const ops=swap(JSON.parse(h.ops));if(await commit('Reverted: '+h.label,ops))toast('Change reverted.')},
+ async phclear(){const id=S.rec;if(!S.photo[id])return;const old=S.photo[id];S.photo[id]='';await commit(`Photo of ${nm(S.T[id])} cleared`,[{p:'photos/'+id,b:{img:old},a:null}],{light:true});loadPhoto(id)},
+ async fileup(){const f=$('#up_file').files[0];if(!f)return toast('Choose a file first.','bad');if(f.size>8*1024*1024)return toast('That file is over 8 MB.','bad');const t=S.T[S.rec];setSync('saving','Uploading');
+  try{const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(f)});
+   ingest(await server('apiUpload',{tid:t.id,cat:$('#up_cat').value,item:$('#up_item').value.trim(),name:f.name,type:f.type},b64));setSync('live','Live');toast('Document uploaded.');render()}
+  catch(e){setSync('live','Live');toast(errText(e),'bad')}},
+ async fileopen(b){setSync('saving','Opening');try{const r=await server('apiFile',b.dataset.id);const bin=atob(r.b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);saveBlob(new Blob([u],{type:r.type}),r.name);toast('Document downloaded.')}catch(e){toast(errText(e),'bad')}setSync('live','Live')},
+ async filedel(b){const f=S.files[b.dataset.id];if(!f||!(await ask('Remove this document?',`<p><b>${esc(f.name)}</b> is removed for everyone and moved to the Google Drive bin.</p>`,'Remove',true)))return;
+  try{ingest(await server('apiFileDelete',b.dataset.id));toast('Document removed.');render()}catch(e){toast(errText(e),'bad')}},
+ signout(){signOut()},
+ trnew(){if(S.canWrite)trForm(null)},
+ tredit(b){if(S.canWrite)trForm(b.dataset.id)},
+ async logodel(){const old=S.logo;if(!old)return;await commit('School logo removed',[{p:'photos/LOGO',b:{img:old},a:null}],{light:true});S.logo='';paintLogo();render()},
+ cadd(){saveContacts([...S.contacts,{role:'',officer:'',email:''}])},
+ idcard(){idCard(S.T[S.rec])},
+ yrsave(){saveYears()},yrback(){viewYear(actY())},yrnext(){startNextYear()},
+ email(){emailDlg(S.T[S.rec])},
+ export:exportXlsx,
+ close:closeDialog};
+function saveContacts(rows){const old=S.contacts,had=S.hasContacts;return commit('Email contacts changed',[{p:'settings/contacts',b:had?{rows:old}:null,a:{rows}}]).then(ok=>{if(ok)render()})}
+
+/* delegated input handling */
+const deb={};
+document.addEventListener('input',e=>{const el=e.target;const m=/^q_(\w+)$/.exec(el.id||'');if(m){S.q[m[1]]=el.value;clearTimeout(deb.q);deb.q=setTimeout(refresh,120)}
+  if(el.dataset.k&&S.mode==='new')S.draft[el.dataset.k]=el.value});
+document.addEventListener('change',async e=>{const el=e.target;
+  if(el.dataset.k){if(S.mode==='new')S.draft[el.dataset.k]=el.value;else if(S.view==='record')saveField(el.dataset.k,el.value,el);return}
+  if(el.id==='pick'){const id=idFrom(el.value);if(S.T[id]){S.rec=id;S.mode='view';render()}return}
+  if(el.id==='listpick'){S.list=el.value;S.filters={};render();return}
+  if(el.dataset.filter){S.filters[el.dataset.filter]=el.value;refresh();return}
+  if(el.id==='listsort'){S.listSort=el.value;refresh();return}
+  if(el.id==='trf_year'){S.trYear=el.value;refresh();return}
+  if(el.id==='trf_type'){S.trType=el.value;refresh();return}
+  if(el.id==='schoolpick'){S.school=el.value;refresh();return}
+  if(el.id==='schoolmode'){S.schoolMode=el.value;refresh();return}
+  if(el.dataset.ck){const rows=S.contacts.map(c=>({...c}));rows[+el.dataset.c][el.dataset.ck]=el.value.trim();saveContacts(rows.filter(c=>c.role||c.officer||c.email));return}
+  if(el.dataset.list&&el.tagName==='TEXTAREA'){const n=el.dataset.list,vals=el.value.split('\n').map(s=>s.trim()).filter(Boolean);const old=S.lists;const nw={...(old||{}),[n]:vals};commit(`${LIST_NAMES[n]} list changed`,[{p:'settings/lists',b:old,a:nw}]);return}
+  if(el.id==='ph_in'&&el.files[0]){const id=S.rec;try{const img=await shrink(el.files[0]);const old=S.photo[id];await commit(`Photo of ${nm(S.T[id])} changed`,[{p:'photos/'+id,b:old?{img:old}:null,a:{img}}],{light:true});loadPhoto(id)}catch(x){toast('Could not read that image.','bad')}return}
+  if(el.id==='logo_in'&&el.files[0]){try{const img=await shrinkLogo(el.files[0]);const old=S.logo;if(await commit('School logo changed',[{p:'photos/LOGO',b:old?{img:old}:null,a:{img}}],{light:true})){S.logo=img;paintLogo();render();toast('Logo saved. Everyone sees it next time they open the app.')}}catch(x){toast('Could not use that image. Try a smaller PNG or JPG.','bad')}el.value='';return}
+  if(el.id==='imp_in'&&el.files[0]){importXlsx(el.files[0]);el.value=''}});
+function shrink(file){return new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,240/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
+  let q=.8,d=c.toDataURL('image/jpeg',q);while(d.length>45000&&q>.3){q-=.1;d=c.toDataURL('image/jpeg',q)}d.length>45000?rej():res(d)};im.onerror=rej;im.src=u})}
+function saveBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+
+/* ---------- ID card ---------- */
+async function idCard(t){const c=document.createElement('canvas');c.width=1012;c.height=638;const x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,1012,638);x.fillStyle='#26282c';x.fillRect(0,0,1012,128);x.fillStyle='#b3261e';x.fillRect(0,128,1012,10);
+  x.fillStyle='#fff';x.font='700 44px "Barlow Condensed",Arial';x.fillText('PNG EDUCATION · WESTERN PROVINCE',36,58);x.font='600 30px "Barlow Condensed",Arial';x.fillText('TEACHER IDENTIFICATION CARD',36,102);
+  const rows=[['Name',nm(t)],['Teacher ID',t.id],['Position',t.position],['Sector',t.sector],['School',t.school],['School Code',t.schoolCode],['Valid Until','31 December '+(new Date().getFullYear()+1)]];
+  rows.forEach(([l,v],i)=>{const y=196+i*52;x.fillStyle='#666a70';x.font='500 24px "IBM Plex Sans",Arial';x.fillText(l,36,y);x.fillStyle='#1d1f22';x.font=(i?'500':'700')+' 28px "IBM Plex Sans",Arial';x.fillText(String(v||''),220,y,500)});
+  x.strokeStyle='#bbb';x.lineWidth=2;x.strokeRect(748,170,228,280);x.fillStyle='#888';x.font='500 22px "IBM Plex Sans",Arial';
+  const img=S.photo[t.id];if(img){await new Promise(r=>{const im=new Image();im.onload=()=>{const s=Math.max(228/im.width,280/im.height),w=im.width*s,h=im.height*s;x.save();x.beginPath();x.rect(748,170,228,280);x.clip();x.drawImage(im,748+(228-w)/2,170+(280-h)/2,w,h);x.restore();r()};im.onerror=r;im.src=img})}else x.fillText('PHOTO',826,318);
+  x.fillStyle='#666a70';x.font='400 20px "IBM Plex Sans",Arial';x.fillText('Authorised by: Division of Education, Middle Fly District',36,580);x.fillText('If found, return to the Division of Education office.',36,610);
+  const url=c.toDataURL('image/png');const d=dialog(`<h2>Teacher ID card</h2><img class="idc" alt="ID card for ${esc(nm(t))}" src="${url}"><div class="row"><button class="btn" data-act="close">Close</button><button class="btn pri" id="idsave">Download picture</button></div>`);
+  const b=$('#idsave',d);b.onclick=()=>c.toBlob(bl=>{saveBlob(bl,`ID_${t.id}.png`);toast('ID card saved. Open the picture to print it.')})}
+/* ---------- Email ---------- */
+function emailDlg(t){const cs=S.contacts.filter(c=>c.email);if(!cs.length){toast('Add officer email addresses in Setup first.','bad');return}
+  const mk=c=>({subj:`TDBMS - ${nm(t)} (${t.id})`,body:`Dear ${c.officer} (${c.role}),\n\nPlease find the details of the following teacher:\n\nTeacher ID: ${t.id}\nName: ${nm(t)}\nPosition: ${t.position||''}\nSector: ${t.sector||''}\nSchool: ${t.school||''}  (${t.schoolCode||''})\nPosting Status: ${t.postStatus||''}\nQualification: ${t.qual||''}\nLeave Status: ${t.leaveStatus||''}\n\nRegards,\n\nCONFIDENTIAL INFORMATION`});
+  const d=dialog(`<h2>Email an officer</h2><label class="fld" for="em_to"><span>Send to</span><select id="em_to">${cs.map((c,i)=>`<option value="${i}">${esc(c.role)} · ${esc(c.officer)}</option>`).join('')}</select></label><p>Address: <b id="em_addr"></b></p><textarea id="em_body" aria-label="Message"></textarea><p class="sub">Copy the message, or open it in your mail app to send it.</p><div class="row"><button class="btn" data-act="close">Close</button><button class="btn" id="em_copy">Copy message</button><a class="btn pri" id="em_go" target="_top">Open in mail app</a></div>`);
+  const up=()=>{const c=cs[+$('#em_to',d).value],m=mk(c);$('#em_addr',d).textContent=c.email;$('#em_body',d).value=m.body;$('#em_go',d).href=`mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(m.subj)}&body=${encodeURIComponent(m.body)}`};
+  $('#em_to',d).onchange=up;up();$('#em_copy',d).onclick=async()=>{try{await navigator.clipboard.writeText($('#em_body',d).value);toast('Message copied.')}catch(e){toast('Select the text and copy it by hand.','bad')}}}
+/* ---------- Excel import / export ---------- */
+function loadXlsx(){return window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
+async function exportXlsx(){try{await loadXlsx()}catch(e){return toast('Could not load the Excel library. Check your connection.','bad')}
+  const rows=[['WESTERN PROVINCIAL ADMINISTRATION, DIVISION OF EDUCATION - MIDDLE FLY'],['TEACHERS DATABASE (exported '+new Date().toLocaleDateString()+')'],COLS.map(c=>c[1])];
+  teachers().forEach(t=>rows.push(COLS.map(([k])=>t[k]??'')));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'TeachersDB');
+  const tr=[['Transfer ID',...TR.map(c=>c[1]),'Recorded by','Recorded on'],...Object.values(S.X).sort((a,b)=>cmp(a.date,b.date)).map(x=>[x.id,...TR.map(c=>x[c[0]]||''),x.by||'',x.at||''])];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tr),'Transfers');
+  const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});saveBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`TDBMS_TeachersDB_${S.viewYear||actY()}${S.viewYear?'_closed':''}_${new Date().toISOString().slice(0,10)}.xlsx`);toast('Excel file saved.')}
+async function importXlsx(file){try{await loadXlsx()}catch(e){return toast('Could not load the Excel library. Check your connection.','bad')}
+  let wb;try{const buf=await file.arrayBuffer();wb=XLSX.read(buf,{type:'array',sheets:'TeachersDB'});if(!wb.Sheets['TeachersDB'])wb=XLSX.read(buf,{type:'array'})}catch(e){return toast('That file could not be read as a workbook.','bad')}
+  const ws=wb.Sheets['TeachersDB']||wb.Sheets[wb.SheetNames[0]];const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  const hi=aoa.findIndex(r=>r.includes('Teacher ID')&&r.includes('Surname'));if(hi<0)return toast('No TeachersDB header row (Teacher ID, Surname…) found in that file.','bad');
+  const head=aoa[hi].map(h=>String(h).trim()),map={};COLS.forEach(([k,l])=>{const i=head.indexOf(l);if(i>=0)map[k]=i});
+  const conv=(k,v)=>{if(v===''||v==null)return '';if(FM[k].type==='date'){if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`:''}const m=/^(\d{4})-(\d\d)-(\d\d)/.exec(String(v));return m?m[0]:String(v)}return clean(k,v)};
+  const ops=[];let add=0,chg=0,same=0,mx=parseInt(nextId().slice(4),10);
+  for(const r of aoa.slice(hi+1)){const rec={};Object.keys(map).forEach(k=>rec[k]=conv(k,r[map[k]]));if(!rec.surname&&!rec.given)continue;let id=String(rec.id||'').trim();if(!id){id='TSC-'+String(mx++).padStart(4,'0')}rec.id=id;
+    const cur=S.T[id];if(!cur){const a={};KEYS.forEach(k=>a[k]=rec[k]??'');a.id=id;ops.push({p:'teachers/'+id,b:null,a,auto:true});add++}
+    else{const b={},a={};Object.keys(map).forEach(k=>{if(k!=='id'&&String(cur[k]??'')!==rec[k]){b[k]=String(cur[k]??'');a[k]=rec[k]}});if(Object.keys(a).length){ops.push({p:'teachers/'+id,b,a});chg++}else same++}}
+  if(!ops.length)return toast(same?'Nothing to import: all '+same+' teachers already match.':'No teacher rows found in that file.');
+  if(!(await ask('Import from Excel',`<p>From <b>${esc(file.name)}</b>:</p><p>${add} new teacher(s), ${chg} updated, ${same} unchanged.</p><p>You can take the whole import back with Undo.</p>`,'Import')))return;
+  if(await commit(`Imported ${add+chg} teacher(s) from Excel`,ops))toast('Import complete.')}
+
+/* ---------- sign-in and live refresh ---------- */
+function creds(v){try{if(v===undefined)return JSON.parse(localStorage.getItem('tdbms_auth')||'null');v?localStorage.setItem('tdbms_auth',JSON.stringify(v)):localStorage.removeItem('tdbms_auth')}catch(e){return null}}
+function showLogin(msg){S.loaded=false;document.body.classList.add('out');setSync('off','Signed out');
+  let lg='';try{lg=S.logo||localStorage.getItem('tdbms_logo')||''}catch(e){}
+  const org=($('#orgline')||{}).textContent||'';
+  $('#main').innerHTML=`<div class="lg-wrap"><div class="lg-card">
+   <div class="lg-brand">${lg?`<img class="lg-logo" id="lg_logo" src="${lg}" alt="Logo">`:`<div class="lg-logo none" id="lg_logo">TDBMS</div>`}
+    <div class="lg-title">TDBMS Teachers Database</div><div class="org">${esc(org).replace(/ · /g,'<br>')}</div><div class="sch">Authorised staff only</div></div>
+   <form class="lg-form" id="login" onsubmit="return false"><h1>${ic('lock')}Sign in</h1><p class="sub">Use the name and PIN given to you by the administrator.</p>
+   ${msg?`<div class="note">${esc(msg)}</div>`:''}
+   <label class="lg-f" for="li_name"><span>${ic('user')}Your name</span><select id="li_name"><option value="">Loading names…</option></select></label>
+   <label class="lg-f" for="li_pin"><span>${ic('hash')}PIN</span><input id="li_pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Enter your PIN"></label>
+   <button class="lg-go" id="li_go" type="button">${ic('signin')}<span>Sign in</span></button>
+   <p class="lg-help">Forgot your PIN? Ask the administrator.</p>${window.__inst?'<button type="button" class="btn" id="li_inst" style="margin:10px auto 0;display:flex">Install TDBMS on this device</button>':''}</form></div>${ownerFoot()}</div>`;
+  if(!lg)call('apiLogo').then(img=>{if(!img)return;try{localStorage.setItem('tdbms_logo',img)}catch(e){}const el=$('#lg_logo');if(el)el.outerHTML=`<img class="lg-logo" id="lg_logo" src="${img}" alt="Logo">`}).catch(()=>{});
+  decorate();
+  const sel=$('#li_name'),last=(creds()||{}).name||localStorage.getItem('tdbms_last')||'';
+  const fill=n=>{sel.innerHTML='<option value="">— Tap to choose your name —</option>'+n.map(x=>`<option${x===last?' selected':''}>${esc(x)}</option>`).join('');if(sel.value)$('#li_pin').focus()};
+  let cn=null;try{cn=JSON.parse(localStorage.getItem('tdbms_names')||'null')}catch(e){}
+  if(S.userList)fill(S.userList);else{if(cn&&cn.length)fill(cn);
+   call('apiNames').then(n=>{S.userList=n;try{localStorage.setItem('tdbms_names',JSON.stringify(n))}catch(e){}const s2=$('#li_name');if(s2&&s2.tagName==='SELECT'&&(!s2.value||s2.value===last))fill(n)})
+    .catch(()=>{const s2=$('#li_name');if(!(cn&&cn.length)&&s2)s2.outerHTML='<input id="li_name" autocomplete="username" placeholder="Type your name">'})}
+  const ib=$('#li_inst');if(ib)ib.onclick=async()=>{const p=window.__inst;if(!p)return;p.prompt();await p.userChoice;window.__inst=null;ib.remove()};
+  $('#li_pin').onkeydown=e=>{if(e.key==='Enter')$('#li_go').click()};
+  $('#li_go').onclick=async()=>{const a={name:$('#li_name').value.trim(),pin:$('#li_pin').value.trim()};if(!a.name||!a.pin)return;$('#li_go').disabled=true;$('#li_go').lastChild.textContent='Signing in…';try{await signIn(a)}catch(e){showLogin(errText(e))}}}
+async function signIn(a,quiet){AUTH=a;const st=await call('apiLogin',a);window.__ok=true;creds(a);try{localStorage.setItem('tdbms_last',a.name)}catch(e){}ingest(st);reapplyOutbox();S.loaded=true;S.offline=false;setTimeout(flush,500);call('apiPhoto',a,'LOGO').then(img=>{S.logo=img||'';try{img?localStorage.setItem('tdbms_logo',img):localStorage.removeItem('tdbms_logo')}catch(e){}paintLogo();if(S.view==='setup')render()}).catch(()=>{});document.body.classList.remove('out');setSync('live',S.canWrite?'Live':'Live · view only');btns();quiet?soon():render()}
+async function signOut(force){if(force!==true&&AUTH&&waiting()&&!(await ask('Sign out?',`<p>${waiting()} change(s) made offline are still waiting to upload. They stay on this device and upload the next time you sign in here.</p>`,'Sign out anyway')))return;try{localStorage.removeItem('tdbms_cache')}catch(e){}creds(null);AUTH=null;undoSt.length=redoSt.length=0;showLogin()}
+async function poll(){if(!AUTH||!S.loaded||pending||flushing||document.hidden)return;if(waiting()){await flush();return}pollN++;try{const r=await call('apiPoll',AUTH,pollN%15?S.ver:-1);if(pending||flushing||!AUTH)return;if(r.T){ingest(r);reapplyOutbox();soon()}if(S.offline){S.offline=false;render()}setSync('live',S.canWrite?'Live':'Live · view only')}
+  catch(e){if(/AUTH/.test(String(e&&e.message)))signOut(true);else offPill()}}
+function scrollWire(){$('#sc_up').innerHTML=ic('up');$('#sc_dn').innerHTML=ic('down');const m=()=>$('#main');
+ $('#sc_up').onclick=()=>m().scrollTo({top:0,behavior:'smooth'});$('#sc_dn').onclick=()=>m().scrollTo({top:m().scrollHeight,behavior:'smooth'})}
+async function start(){scrollWire();navHtml();const a=creds(),c0=cachedState();
+  if(a&&c0&&c0.me&&c0.me.toLowerCase()===a.name.toLowerCase()){AUTH=a;c0.__cached=true;ingest(c0);reapplyOutbox();S.loaded=true;S.offline=true;document.body.classList.remove('out');btns();render();setSync('saving','Connecting');
+   signIn(a,true).then(()=>{S.offline=false}).catch(e=>{if(/AUTH/.test(String(e&&e.message))){signOut(true);showLogin(errText(e))}else{offPill();if(!isNet(e))toast(errText(e),'bad')}})}
+  else if(a){$('#main').innerHTML='<div class="empty">Loading the database…</div>';try{await signIn(a)}catch(e){const c=cachedState();if(isNet(e)&&c&&c.me&&c.me.toLowerCase()===a.name.toLowerCase()){AUTH=a;c.__cached=true;ingest(c);reapplyOutbox();S.loaded=true;S.offline=true;document.body.classList.remove('out');btns();render();offPill();toast('No network. Showing the last saved copy. New entries will upload when the network is back.')}else showLogin(/AUTH/.test(String(e&&e.message))?'':'Could not reach the database. Check your connection.')}}else showLogin();
+  setInterval(poll,8000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()})}
+if(window.__TEST)Object.assign(window,{S,go,ACT,signOut,decorate,trForm,__commit:commit,poll,viewYear,yearDialog,startNextYear});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__inst=e;if(document.body.classList.contains('out')&&$('#login')&&!$('#li_inst'))$('#login .lg-help').insertAdjacentHTML('afterend','<button type="button" class="btn" id="li_inst" style="margin:10px auto 0;display:flex">Install TDBMS on this device</button>'),$('#li_inst').onclick=async()=>{e.prompt();await e.userChoice;window.__inst=null;const b=$('#li_inst');if(b)b.remove()}});
+start().catch(function(e){window.onerror(e&&e.message||e,'',0,0)});
+})();
+</script>
+<script>if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});</script>
+</body>
+</html>
